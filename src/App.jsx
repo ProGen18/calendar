@@ -12,9 +12,8 @@ import {
 // View modes
 const VIEW_MODES = {
     DAY: 'day',
-    WEEK: 'week',
     AGENDA: 'agenda',
-    TIMELINE: 'timeline',
+    TOOLS: 'tools',
 };
 
 // Default settings
@@ -926,12 +925,8 @@ function NextClassCountdown({ events }) {
 
     useEffect(() => {
         const updateCountdown = () => {
-            const now = new Date();
-            // Filter to only today's events
-            const todayEvents = events.filter(e => isSameDay(e.start, now));
-
-            const current = getCurrentEvent(todayEvents);
-            const next = getNextEvent(todayEvents);
+            const current = getCurrentEvent(events);
+            const next = getNextEvent(events);
 
             setCurrentEvent(current);
             setNextEvent(next);
@@ -1180,19 +1175,92 @@ function ViewModeSelector({ viewMode, onChange }) {
     const modes = [
         { id: VIEW_MODES.DAY, label: 'Jour', icon: <Icons.Calendar /> },
         { id: VIEW_MODES.AGENDA, label: 'Agenda', icon: <Icons.List /> },
+        { id: VIEW_MODES.TOOLS, label: 'Plus', icon: <Icons.Search /> },
     ];
 
+    const activeIndex = modes.findIndex(m => m.id === viewMode);
+
     return (
-        <div className="view-mode-selector">
+        <div className="view-mode-selector view-mode-selector--three">
             <div
                 className="view-mode-indicator"
-                style={{ transform: viewMode === VIEW_MODES.AGENDA ? 'translateX(100%)' : 'translateX(0)' }}
+                style={{ transform: `translateX(${activeIndex * 100}%)` }}
             />
             {modes.map(({ id, label, icon }) => (
                 <button key={id} className={`view-mode-btn ${viewMode === id ? 'active' : ''}`} onClick={() => onChange(id)}>
                     {icon}<span className="view-mode-btn__label">{label}</span>
                 </button>
             ))}
+        </div>
+    );
+}
+
+// Tools View - Search, Countdown, Stats
+function ToolsView({ events, weekDates, onEventClick }) {
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Filter future events matching search
+    const searchResults = useMemo(() => {
+        const now = new Date();
+        const futureEvents = events.filter(e => e.start > now);
+
+        if (!searchQuery.trim()) return [];
+
+        const q = searchQuery.toLowerCase();
+        return futureEvents.filter(e => {
+            const searchable = [
+                e.title, e.subjectName, e.room, e.module, e.notes,
+                e.staff?.join(' '),
+            ].filter(Boolean).join(' ').toLowerCase();
+            return searchable.includes(q);
+        }).slice(0, 10);
+    }, [events, searchQuery]);
+
+    return (
+        <div className="tools-view">
+            {/* Search Section */}
+            <div className="tools-section">
+                <h3 className="tools-section__title"><Icons.Search /> Rechercher un cours</h3>
+                <div className="tools-search">
+                    <input
+                        type="text"
+                        className="tools-search__input"
+                        placeholder="Nom du cours, prof, salle..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        autoFocus
+                    />
+                    {searchQuery && (
+                        <button className="tools-search__clear" onClick={() => setSearchQuery('')}>
+                            <Icons.X />
+                        </button>
+                    )}
+                </div>
+
+                {searchQuery && (
+                    <div className="tools-search__results">
+                        {searchResults.length === 0 ? (
+                            <p className="tools-search__empty">Aucun cours trouvé</p>
+                        ) : (
+                            searchResults.map(event => (
+                                <EventCard key={event.id} event={event} onClick={onEventClick} />
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Countdown Section */}
+            <div className="tools-section">
+                <h3 className="tools-section__title"><Icons.Zap /> Prochain cours</h3>
+                <NextClassCountdown events={events} />
+            </div>
+
+            {/* Stats Section */}
+            <div className="tools-section">
+                <h3 className="tools-section__title"><Icons.BarChart /> Statistiques</h3>
+                <WeeklyStatsWidget events={events} weekDates={weekDates} />
+            </div>
         </div>
     );
 }
@@ -1246,7 +1314,6 @@ export default function App() {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isFromCache, setIsFromCache] = useState(false);
     const [cacheDate, setCacheDate] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
 
     // Save settings on change
     useEffect(() => {
@@ -1321,9 +1388,6 @@ export default function App() {
     // Apply all filters for the view
     const { visible: filteredEvents, hidden: hiddenEvents } = useMemo(() => applyAllFilters(events, settings), [events, settings]);
 
-    // Apply search filter
-    const searchedEvents = useMemo(() => searchEvents(filteredEvents, searchQuery), [filteredEvents, searchQuery]);
-
     // Generate options from the stable list
     const subjects = useMemo(() => getUniqueSubjects(filterOptionsEvents), [filterOptionsEvents]);
     const types = useMemo(() => getUniqueTypes(filterOptionsEvents), [filterOptionsEvents]);
@@ -1360,21 +1424,6 @@ export default function App() {
                     )}
                 </div>
                 <div className="header__actions">
-                    <div className="search-box">
-                        <Icons.Search />
-                        <input
-                            type="text"
-                            className="search-box__input"
-                            placeholder="Rechercher..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        {searchQuery && (
-                            <button className="search-box__clear" onClick={() => setSearchQuery('')}>
-                                <Icons.X />
-                            </button>
-                        )}
-                    </div>
                     <button className="btn btn--icon btn--ghost" onClick={loadCalendar} title="Rafraîchir">
                         <Icons.Refresh />
                     </button>
@@ -1403,7 +1452,6 @@ export default function App() {
                 </div>
             )}
 
-
             <main className="main">
                 {loading && events.length === 0 ? (
                     <div className="loading"><div className="loading__spinner" /><p>Chargement...</p></div>
@@ -1414,32 +1462,25 @@ export default function App() {
                         <p>{error}</p>
                         <button className="btn btn--primary" onClick={loadCalendar}>Réessayer</button>
                     </div>
+                ) : settings.viewMode === VIEW_MODES.TOOLS ? (
+                    <ToolsView
+                        events={filteredEvents}
+                        weekDates={weekDates}
+                        onEventClick={setSelectedEvent}
+                    />
+                ) : settings.viewMode === VIEW_MODES.DAY ? (
+                    <DayView
+                        events={filteredEvents}
+                        hiddenEvents={hiddenEvents}
+                        selectedDate={selectedDate}
+                        onEventClick={setSelectedEvent}
+                    />
                 ) : (
-                    <>
-                        {/* Countdown - Only on today */}
-                        {isToday(selectedDate) && (
-                            <NextClassCountdown events={searchedEvents} />
-                        )}
-
-                        {/* Main View */}
-                        {settings.viewMode === VIEW_MODES.DAY ? (
-                            <DayView
-                                events={searchedEvents}
-                                hiddenEvents={hiddenEvents}
-                                selectedDate={selectedDate}
-                                onEventClick={setSelectedEvent}
-                            />
-                        ) : (
-                            <AgendaView
-                                events={searchedEvents}
-                                hiddenEvents={hiddenEvents}
-                                onEventClick={setSelectedEvent}
-                            />
-                        )}
-
-                        {/* Stats at bottom */}
-                        <WeeklyStatsWidget events={filteredEvents} weekDates={weekDates} />
-                    </>
+                    <AgendaView
+                        events={filteredEvents}
+                        hiddenEvents={hiddenEvents}
+                        onEventClick={setSelectedEvent}
+                    />
                 )}
             </main>
 
