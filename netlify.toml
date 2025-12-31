@@ -4,3 +4,14 @@
 
 [dev]
   command = "npm run dev"
+
+[[redirects]]
+  from = "/celcat-feed/*"
+  to = "https://extra.u-picardie.fr/celcat-feed/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

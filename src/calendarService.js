@@ -3,7 +3,7 @@
  * Optimized for CELCAT calendar format
  */
 
-const ICS_URL = 'https://extra.u-picardie.fr/celcat-feed/ical/AQ13FQGL3814385/schedule.ics';
+const ICS_URL = '/celcat-feed/ical/AQ13FQGL3814385/schedule.ics';
 
 // Color palette for subjects (contrast-safe)
 const COLORS = [
