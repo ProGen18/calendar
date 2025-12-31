@@ -20,6 +20,8 @@ const VIEW_MODES = {
 // Default settings
 const DEFAULT_SETTINGS = {
     icsUrl: '',
+    secondaryIcsUrl: '', // Optional secondary calendar
+    secondaryMode: 'merge', // 'merge' or 'separate'
     groupNumber: null,
     bannedPatterns: [], // Array of {pattern: string, isRegex: boolean, enabled: boolean}
     hiddenSubjects: [],
@@ -411,6 +413,59 @@ function searchEvents(events, query) {
     });
 }
 
+// Generate ICS file content for universal export (Apple, Outlook, etc.)
+function generateICSContent(event) {
+    const formatICSDate = (date) => {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+
+    const escapeICS = (str) => {
+        if (!str) return '';
+        return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    };
+
+    const uid = `${event.id || Date.now()}@celcat-calendar`;
+    const description = [
+        event.staff?.length ? `Enseignant: ${event.staff.join(', ')}` : '',
+        event.group ? `Groupe: ${event.group}` : '',
+        event.notes || '',
+    ].filter(Boolean).join('\n');
+
+    const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//CELCAT Calendar//FR',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${formatICSDate(new Date())}`,
+        `DTSTART:${formatICSDate(event.start)}`,
+        `DTEND:${formatICSDate(event.end)}`,
+        `SUMMARY:${escapeICS(event.subjectName || event.title)}`,
+        event.room ? `LOCATION:${escapeICS(event.room)}` : '',
+        description ? `DESCRIPTION:${escapeICS(description)}` : '',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].filter(Boolean).join('\r\n');
+
+    return icsContent;
+}
+
+// Download ICS file
+function downloadICSFile(event) {
+    const content = generateICSContent(event);
+    const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(event.subjectName || 'event').replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
 // Settings Panel Component
 function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }) {
     const [localSettings, setLocalSettings] = useState(settings);
@@ -595,6 +650,57 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                             </div>
                         </div>
                     </div>
+
+                    {/* Advanced Options - Discrete */}
+                    <details className="filter-section advanced-section">
+                        <summary className="advanced-section__toggle">
+                            <Icons.Settings /> Options avancées
+                        </summary>
+                        <div className="advanced-section__content">
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <h4 style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-sm)' }}>
+                                    📡 Calendrier Secondaire (optionnel)
+                                </h4>
+                                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
+                                    Ajouter un second flux ICS pour combiner deux emplois du temps
+                                </p>
+                                <input
+                                    type="url"
+                                    className="settings-input"
+                                    placeholder="URL secondaire (optionnel)"
+                                    value={localSettings.secondaryIcsUrl || ''}
+                                    onChange={(e) => setLocalSettings(prev => ({ ...prev, secondaryIcsUrl: e.target.value }))}
+                                />
+
+                                {localSettings.secondaryIcsUrl && (
+                                    <div style={{ marginTop: 'var(--space-sm)' }}>
+                                        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)' }}>
+                                            Mode d'affichage :
+                                        </p>
+                                        <div className="filter-chips">
+                                            <button
+                                                className={`filter-chip ${localSettings.secondaryMode === 'merge' ? 'active' : ''}`}
+                                                onClick={() => setLocalSettings(prev => ({ ...prev, secondaryMode: 'merge' }))}
+                                            >
+                                                🔀 Fusionner
+                                            </button>
+                                            <button
+                                                className={`filter-chip ${localSettings.secondaryMode === 'separate' ? 'active' : ''}`}
+                                                onClick={() => setLocalSettings(prev => ({ ...prev, secondaryMode: 'separate' }))}
+                                            >
+                                                📊 Séparés
+                                            </button>
+                                        </div>
+                                        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-xs)' }}>
+                                            {localSettings.secondaryMode === 'merge'
+                                                ? '• Les deux EDT sont combinés en un seul'
+                                                : '• Les événements secondaires sont marqués différemment'}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </details>
 
                     {/* Credits Section */}
                     <div className="filter-section" style={{ marginTop: 'var(--space-lg)', borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-md)' }}>
@@ -789,14 +895,23 @@ function EventDetailModal({ event, onClose }) {
                     )}
                 </div>
                 <div className="modal__footer">
-                    <a
-                        href={generateGoogleCalendarUrl(event)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn--primary btn--full"
-                    >
-                        <Icons.ExternalLink /> Ajouter à Google Calendar
-                    </a>
+                    <div className="modal__export-buttons">
+                        <button
+                            className="btn btn--secondary"
+                            onClick={() => downloadICSFile(event)}
+                            title="Compatible Apple Calendar, Outlook, etc."
+                        >
+                            <Icons.Save /> Télécharger .ics
+                        </button>
+                        <a
+                            href={generateGoogleCalendarUrl(event)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn--primary"
+                        >
+                            <Icons.ExternalLink /> Google Calendar
+                        </a>
+                    </div>
                 </div>
             </div>
         </>
@@ -903,9 +1018,16 @@ function EventCard({ event, onClick }) {
     const color = getSubjectColor(event.subjectName);
 
     return (
-        <div className="event-card" style={{ '--event-color': color }} onClick={() => onClick(event)}>
+        <div
+            className={`event-card ${event.isSecondary ? 'event-card--secondary' : ''}`}
+            style={{ '--event-color': color }}
+            onClick={() => onClick(event)}
+        >
             <div className="event-card__header">
-                <h3 className="event-card__title">{event.subjectName}</h3>
+                <h3 className="event-card__title">
+                    {event.isSecondary && <span className="event-card__secondary-badge">2</span>}
+                    {event.subjectName}
+                </h3>
                 <span className="event-card__type" style={{ background: color }}>{event.typeLabel}</span>
             </div>
             <div className="event-card__time">
@@ -1127,7 +1249,7 @@ export default function App() {
         saveSettings(settings);
     }, [settings]);
 
-    // Load calendar data with cache support
+    // Load calendar data with cache support and secondary feed
     const loadCalendar = useCallback(async () => {
         if (!settings.icsUrl) return;
 
@@ -1143,12 +1265,26 @@ export default function App() {
         setLoading(true);
         setError(null);
         try {
-            const data = await fetchCalendarEvents(settings.icsUrl);
-            setEvents(data);
+            // Fetch primary feed
+            const primaryData = await fetchCalendarEvents(settings.icsUrl);
+            let allEvents = primaryData.map(e => ({ ...e, isSecondary: false }));
+
+            // Fetch secondary feed if configured
+            if (settings.secondaryIcsUrl) {
+                try {
+                    const secondaryData = await fetchCalendarEvents(settings.secondaryIcsUrl);
+                    const secondaryEvents = secondaryData.map(e => ({ ...e, isSecondary: true }));
+                    allEvents = [...allEvents, ...secondaryEvents].sort((a, b) => a.start - b.start);
+                } catch (secErr) {
+                    console.warn('Failed to load secondary feed:', secErr);
+                }
+            }
+
+            setEvents(allEvents);
             setIsFromCache(false);
             setCacheDate(null);
             // Cache the fresh data
-            cacheEvents(data, settings.icsUrl);
+            cacheEvents(allEvents, settings.icsUrl);
         } catch (err) {
             // If we have cached data, don't show error, just keep using cache
             if (!cached) {
@@ -1158,7 +1294,7 @@ export default function App() {
         } finally {
             setLoading(false);
         }
-    }, [settings.icsUrl]);
+    }, [settings.icsUrl, settings.secondaryIcsUrl]);
 
     useEffect(() => {
         loadCalendar();

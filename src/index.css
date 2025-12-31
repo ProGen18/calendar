@@ -2187,3 +2187,84 @@ svg {
 .modal__footer a {
   text-decoration: none;
 }
+
+.modal__export-buttons {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.modal__export-buttons .btn {
+  flex: 1;
+}
+
+/* Secondary Event Badge */
+.event-card--secondary {
+  border-left-style: dashed;
+  opacity: 0.9;
+}
+
+.event-card__secondary-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--accent-warning);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* Advanced Settings Section */
+.advanced-section {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.advanced-section__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  list-style: none;
+  user-select: none;
+}
+
+.advanced-section__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-section__toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.advanced-section__toggle:hover {
+  color: var(--text-secondary);
+}
+
+.advanced-section[open] .advanced-section__toggle {
+  color: var(--text-secondary);
+}
+
+.advanced-section__content {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
