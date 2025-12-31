@@ -1,0 +1,1033 @@
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+    fetchCalendarEvents,
+    getUniqueTypes,
+    filterEvents,
+    getEventsForDate,
+    getWeekDates,
+} from './calendarService';
+
+// View modes
+const VIEW_MODES = {
+    DAY: 'day',
+    WEEK: 'week',
+    AGENDA: 'agenda',
+    TIMELINE: 'timeline',
+};
+
+// Default settings
+const DEFAULT_SETTINGS = {
+    icsUrl: '',
+    groupNumber: null,
+    bannedPatterns: [], // Array of {pattern: string, isRegex: boolean, enabled: boolean}
+    hiddenSubjects: [],
+    hiddenTypes: [],
+    viewMode: VIEW_MODES.DAY,
+};
+
+// Storage key
+const STORAGE_KEY = 'celcat-calendar-settings';
+
+// Load settings from localStorage
+function loadSettings() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            return { ...DEFAULT_SETTINGS, ...parsed };
+        }
+    } catch (e) {
+        console.error('Failed to load settings:', e);
+    }
+    return { ...DEFAULT_SETTINGS };
+}
+
+// Save settings to localStorage
+function saveSettings(settings) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    } catch (e) {
+        console.error('Failed to save settings:', e);
+    }
+}
+
+// Icons as SVG components
+const Icons = {
+    Filter: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
+    ),
+    Settings: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+    ),
+    Clock: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+        </svg>
+    ),
+    MapPin: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+        </svg>
+    ),
+    User: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+        </svg>
+    ),
+    Users: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+    ),
+    ChevronLeft: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+        </svg>
+    ),
+    ChevronRight: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+        </svg>
+    ),
+    X: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+    ),
+    Plus: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+    ),
+    Trash: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
+    ),
+    Calendar: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+    ),
+    List: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" />
+            <line x1="3" y1="12" x2="3.01" y2="12" />
+            <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+    ),
+    Refresh: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        </svg>
+    ),
+    ChevronUp: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="18 15 12 9 6 15" />
+        </svg>
+    ),
+    ChevronDown: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+        </svg>
+    ),
+    AlertCircle: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+    ),
+    Info: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+    ),
+    Rocket: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+            <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+        </svg>
+    ),
+    Save: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+        </svg>
+    ),
+    BookOpen: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+        </svg>
+    ),
+    Mail: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+            <polyline points="22,6 12,13 2,6" />
+        </svg>
+    ),
+};
+
+// Helper functions
+function formatDateHeader(date) {
+    return date.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+    });
+}
+
+function formatWeekday(date) {
+    return date.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 3);
+}
+
+function isSameDay(date1, date2) {
+    return date1.getFullYear() === date2.getFullYear() &&
+        date1.getMonth() === date2.getMonth() &&
+        date1.getDate() === date2.getDate();
+}
+
+function isToday(date) {
+    return isSameDay(date, new Date());
+}
+
+// Color generator
+function getSubjectColor(subjectName) {
+    const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e', '#84cc16'];
+    let hash = 0;
+    for (let i = 0; i < subjectName.length; i++) {
+        hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// Check if event matches banned patterns
+function matchesBannedPatterns(event, bannedPatterns) {
+    const searchText = [
+        event.title,
+        event.subjectName,
+        event.group,
+        event.module,
+        event.notes,
+        event.staff?.join(' '),
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    for (const { pattern, isRegex, enabled } of bannedPatterns) {
+        if (!enabled || !pattern) continue;
+
+        try {
+            if (isRegex) {
+                const regex = new RegExp(pattern, 'i');
+                if (regex.test(searchText)) return true;
+            } else {
+                if (searchText.includes(pattern.toLowerCase())) return true;
+            }
+        } catch (e) {
+            // Invalid regex, skip
+            console.warn('Invalid pattern:', pattern, e);
+        }
+    }
+    return false;
+}
+
+// Apply all filters including banned patterns
+function applyAllFilters(events, settings) {
+    const visible = [];
+    const hidden = [];
+
+    for (const event of events) {
+        let isHidden = false;
+
+        // Banned patterns
+        if (matchesBannedPatterns(event, settings.bannedPatterns)) isHidden = true;
+        // Hidden subjects
+        else if (settings.hiddenSubjects.includes(event.subjectName)) isHidden = true;
+        // Hidden types
+        else if (settings.hiddenTypes.includes(event.type)) isHidden = true;
+        // Group filter
+        else if (settings.groupNumber && event.groupNumber && event.groupNumber !== settings.groupNumber) isHidden = true;
+
+        if (isHidden) hidden.push(event);
+        else visible.push(event);
+    }
+
+    return { visible, hidden };
+}
+
+// Get unique subjects with colors
+function getUniqueSubjects(events) {
+    const subjects = new Map();
+    for (const event of events) {
+        if (!subjects.has(event.subjectName)) {
+            subjects.set(event.subjectName, {
+                name: event.subjectName,
+                color: getSubjectColor(event.subjectName),
+                count: 0,
+            });
+        }
+        subjects.get(event.subjectName).count++;
+    }
+    return Array.from(subjects.values()).sort((a, b) => b.count - a.count);
+}
+
+// Settings Panel Component
+function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }) {
+    const [localSettings, setLocalSettings] = useState(settings);
+    const [newPattern, setNewPattern] = useState('');
+    const [isRegex, setIsRegex] = useState(false);
+
+    useEffect(() => {
+        setLocalSettings(settings);
+    }, [settings]);
+
+    const handleSave = () => {
+        onSettingsChange(localSettings);
+        onClose();
+        if (localSettings.icsUrl !== settings.icsUrl) {
+            onReload();
+        }
+    };
+
+    const handleAddPattern = () => {
+        if (!newPattern.trim()) return;
+
+        // Validate regex if needed
+        if (isRegex) {
+            try {
+                new RegExp(newPattern);
+            } catch (e) {
+                alert('Expression régulière invalide');
+                return;
+            }
+        }
+
+        setLocalSettings(prev => ({
+            ...prev,
+            bannedPatterns: [
+                ...prev.bannedPatterns,
+                { pattern: newPattern.trim(), isRegex, enabled: true }
+            ]
+        }));
+        setNewPattern('');
+        setIsRegex(false);
+    };
+
+    const handleRemovePattern = (index) => {
+        setLocalSettings(prev => ({
+            ...prev,
+            bannedPatterns: prev.bannedPatterns.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleTogglePattern = (index) => {
+        setLocalSettings(prev => ({
+            ...prev,
+            bannedPatterns: prev.bannedPatterns.map((p, i) =>
+                i === index ? { ...p, enabled: !p.enabled } : p
+            )
+        }));
+    };
+
+    return (
+        <>
+            <div className={`filter-overlay ${isOpen ? 'open' : ''}`} onClick={onClose} />
+            <div className={`filter-panel ${isOpen ? 'open' : ''}`}>
+                <div className="filter-panel__header">
+                    <h2 className="filter-panel__title"><Icons.Settings /> Paramètres</h2>
+                    <button className="filter-panel__close" onClick={onClose}>
+                        <Icons.X />
+                    </button>
+                </div>
+
+                <div className="filter-panel__content">
+                    {/* ICS URL */}
+                    <div className="filter-section">
+                        <h3 className="filter-section__title"><Icons.Calendar /> URL du Calendrier</h3>
+                        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
+                            Collez votre lien ICS (webcal:// ou https://)
+                        </p>
+                        <input
+                            type="url"
+                            className="settings-input"
+                            placeholder="https://... ou webcal://..."
+                            value={localSettings.icsUrl}
+                            onChange={(e) => setLocalSettings(prev => ({ ...prev, icsUrl: e.target.value }))}
+                        />
+                    </div>
+
+                    {/* Group Filter */}
+                    <div className="filter-section">
+                        <h3 className="filter-section__title"><Icons.Users /> Numéro de Groupe</h3>
+                        <div className="filter-chips">
+                            <button
+                                className={`filter-chip ${!localSettings.groupNumber ? 'active' : ''}`}
+                                onClick={() => setLocalSettings(prev => ({ ...prev, groupNumber: null }))}
+                            >
+                                Tous
+                            </button>
+                            {[1, 2, 3, 4, 5].map((num) => (
+                                <button
+                                    key={num}
+                                    className={`filter-chip ${localSettings.groupNumber === num ? 'active' : ''}`}
+                                    onClick={() => setLocalSettings(prev => ({ ...prev, groupNumber: num }))}
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Banned Patterns */}
+                    <div className="filter-section">
+                        <h3 className="filter-section__title"><Icons.AlertCircle /> Mots/Patterns Bannis</h3>
+                        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
+                            Les cours contenant ces mots seront masqués
+                        </p>
+
+                        {/* Add new pattern */}
+                        <div className="pattern-add">
+                            <input
+                                type="text"
+                                className="settings-input settings-input--small"
+                                placeholder="Ex: LICENCE 2 ou L2INFO.*"
+                                value={newPattern}
+                                onChange={(e) => setNewPattern(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddPattern()}
+                            />
+                            <label className="pattern-add__regex">
+                                <input
+                                    type="checkbox"
+                                    checked={isRegex}
+                                    onChange={(e) => setIsRegex(e.target.checked)}
+                                />
+                                <span>Regex</span>
+                            </label>
+                            <button
+                                className="btn btn--primary btn--icon"
+                                onClick={handleAddPattern}
+                                title="Ajouter"
+                            >
+                                <Icons.Plus />
+                            </button>
+                        </div>
+
+                        {/* Pattern list */}
+                        <div className="pattern-list">
+                            {localSettings.bannedPatterns.length === 0 && (
+                                <div className="pattern-list__empty">
+                                    Aucun pattern. Ajoutez des mots-clés à bannir.
+                                </div>
+                            )}
+                            {localSettings.bannedPatterns.map((p, index) => (
+                                <div key={index} className={`pattern-item ${!p.enabled ? 'disabled' : ''}`}>
+                                    <label className="toggle-switch toggle-switch--small">
+                                        <input
+                                            type="checkbox"
+                                            checked={p.enabled}
+                                            onChange={() => handleTogglePattern(index)}
+                                        />
+                                        <span className="toggle-switch__slider" />
+                                    </label>
+                                    <div className="pattern-item__content">
+                                        <code className="pattern-item__pattern">{p.pattern}</code>
+                                        {p.isRegex && <span className="pattern-item__badge">REGEX</span>}
+                                    </div>
+                                    <button
+                                        className="btn btn--ghost btn--icon btn--small"
+                                        onClick={() => handleRemovePattern(index)}
+                                    >
+                                        <Icons.Trash />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Common patterns suggestion */}
+                        <div className="pattern-suggestions">
+                            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)' }}>
+                                💡 Exemples de patterns :
+                            </p>
+                            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+                                • <code>LICENCE 2</code> - Masque tous les L2<br />
+                                • <code>L2INFO</code> - Masque L2 Informatique<br />
+                                • <code>groupe [13]</code> (regex) - Masque groupes 1 et 3
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Credits Section */}
+                    <div className="filter-section" style={{ marginTop: 'var(--space-lg)', borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-md)' }}>
+                        <h3 className="filter-section__title"><Icons.Info /> À propos</h3>
+                        <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                            <p><strong>Steph Calendar v1.0</strong></p>
+                            <p>Développé avec ❤️ par <strong>Stéphane Talab</strong></p>
+                            <a
+                                href="https://stephane-talab.fr"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn--ghost btn--full"
+                                style={{
+                                    marginTop: 'var(--space-sm)',
+                                    textDecoration: 'none',
+                                    background: 'var(--bg-tertiary)',
+                                    justifyContent: 'center',
+                                    color: 'var(--accent-primary)'
+                                }}
+                            >
+                                <Icons.Rocket /> Contactez-moi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="filter-panel__footer">
+                    <button className="btn btn--primary btn--full" onClick={handleSave}>
+                        <Icons.Save /> Sauvegarder
+                    </button>
+                </div>
+            </div>
+        </>
+    );
+}
+
+// Filter Panel Component (for subjects and types)
+function FilterPanel({ isOpen, onClose, subjects, types, settings, onSettingsChange }) {
+    const handleSubjectToggle = (subjectName) => {
+        const hidden = new Set(settings.hiddenSubjects);
+        if (hidden.has(subjectName)) {
+            hidden.delete(subjectName);
+        } else {
+            hidden.add(subjectName);
+        }
+        onSettingsChange({ ...settings, hiddenSubjects: Array.from(hidden) });
+    };
+
+    const handleTypeToggle = (type) => {
+        const hidden = new Set(settings.hiddenTypes);
+        if (hidden.has(type)) {
+            hidden.delete(type);
+        } else {
+            hidden.add(type);
+        }
+        onSettingsChange({ ...settings, hiddenTypes: Array.from(hidden) });
+    };
+
+    const handleShowAll = () => {
+        onSettingsChange({ ...settings, hiddenSubjects: [], hiddenTypes: [] });
+    };
+
+    const handleHideAll = () => {
+        onSettingsChange({ ...settings, hiddenSubjects: subjects.map(s => s.name) });
+    };
+
+    return (
+        <>
+            <div className={`filter-overlay ${isOpen ? 'open' : ''}`} onClick={onClose} />
+            <div className={`filter-panel ${isOpen ? 'open' : ''}`}>
+                <div className="filter-panel__header">
+                    <h2 className="filter-panel__title"><Icons.Filter /> Filtres Rapides</h2>
+                    <button className="filter-panel__close" onClick={onClose}>
+                        <Icons.X />
+                    </button>
+                </div>
+
+                <div className="filter-panel__content">
+                    {/* Type Filter */}
+                    <div className="filter-section">
+                        <h3 className="filter-section__title"><Icons.BookOpen /> Type de cours</h3>
+                        <div className="filter-chips">
+                            {types.map(({ type, label, count }) => (
+                                <button
+                                    key={type}
+                                    className={`filter-chip ${!settings.hiddenTypes.includes(type) ? 'active' : ''}`}
+                                    onClick={() => handleTypeToggle(type)}
+                                >
+                                    {label} ({count})
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Subject Filter */}
+                    <div className="filter-section">
+                        <h3 className="filter-section__title">
+                            <Icons.BookOpen /> Matières
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                <button className="btn btn--secondary btn--small" onClick={handleShowAll}>
+                                    Tout afficher
+                                </button>
+                                <button className="btn btn--secondary btn--small" onClick={handleHideAll}>
+                                    Tout masquer
+                                </button>
+                            </div>
+                        </h3>
+                        <div style={{ marginTop: 'var(--space-sm)' }}>
+                            {subjects.map(({ name, color, count }) => {
+                                const isVisible = !settings.hiddenSubjects.includes(name);
+                                return (
+                                    <div key={name} className="toggle-item">
+                                        <div className="toggle-item__label">
+                                            <span className="toggle-item__color" style={{ background: color }} />
+                                            <span className="toggle-item__text">
+                                                {name} <span style={{ color: 'var(--text-muted)' }}>({count})</span>
+                                            </span>
+                                        </div>
+                                        <label className="toggle-switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={isVisible}
+                                                onChange={() => handleSubjectToggle(name)}
+                                            />
+                                            <span className="toggle-switch__slider" />
+                                        </label>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="filter-panel__footer">
+                    <button className="btn btn--primary btn--full" onClick={onClose}>
+                        Appliquer
+                    </button>
+                </div>
+            </div>
+        </>
+    );
+}
+
+// Event Detail Modal
+function EventDetailModal({ event, onClose }) {
+    if (!event) return null;
+
+    return (
+        <>
+            <div className="modal-overlay" onClick={onClose} />
+            <div className="modal">
+                <div className="modal__header" style={{ borderLeftColor: getSubjectColor(event.subjectName) }}>
+                    <h2 className="modal__title"><Icons.Info /> {event.subjectName}</h2>
+                    <button className="modal__close" onClick={onClose}>
+                        <Icons.X />
+                    </button>
+                </div>
+                <div className="modal__content">
+                    <div className="modal__section">
+                        <div className="modal__label"><Icons.Clock /> Horaire</div>
+                        <div className="modal__value">{event.startTime} - {event.endTime}</div>
+                    </div>
+                    <div className="modal__section">
+                        <div className="modal__label"><Icons.Calendar /> Date</div>
+                        <div className="modal__value">
+                            {event.start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </div>
+                    </div>
+                    {event.room && (
+                        <div className="modal__section">
+                            <div className="modal__label"><Icons.MapPin /> Salle</div>
+                            <div className="modal__value modal__value--highlight">{event.room}</div>
+                        </div>
+                    )}
+                    {event.staff?.length > 0 && (
+                        <div className="modal__section">
+                            <div className="modal__label"><Icons.User /> Enseignant(s)</div>
+                            <div className="modal__value">{event.staff.join(', ')}</div>
+                        </div>
+                    )}
+                    {event.group && (
+                        <div className="modal__section">
+                            <div className="modal__label"><Icons.Users /> Groupe</div>
+                            <div className="modal__value">{event.group}</div>
+                        </div>
+                    )}
+                    {event.notes && (
+                        <div className="modal__section">
+                            <div className="modal__label"><Icons.Info /> Notes</div>
+                            <div className="modal__value modal__value--notes">{event.notes}</div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+}
+
+// Event Card Component
+function EventCard({ event, onClick }) {
+    const color = getSubjectColor(event.subjectName);
+
+    return (
+        <div className="event-card" style={{ '--event-color': color }} onClick={() => onClick(event)}>
+            <div className="event-card__header">
+                <h3 className="event-card__title">{event.subjectName}</h3>
+                <span className="event-card__type" style={{ background: color }}>{event.typeLabel}</span>
+            </div>
+            <div className="event-card__time">
+                <Icons.Clock />
+                <span>{event.startTime} - {event.endTime}</span>
+            </div>
+            <div className="event-card__details">
+                {event.room && <span className="event-card__detail"><Icons.MapPin />{event.room}</span>}
+                {event.staff?.length > 0 && <span className="event-card__detail"><Icons.User />{event.staff[0]}</span>}
+            </div>
+        </div>
+    );
+}
+
+// Hidden Events Section
+function HiddenEventsList({ events, onEventClick }) {
+    const [isOpen, setIsOpen] = useState(false);
+    if (!events || events.length === 0) return null;
+
+    return (
+        <div className="hidden-events">
+            <button className="hidden-events__toggle" onClick={() => setIsOpen(!isOpen)}>
+                {isOpen ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
+                {events.length} cours masqué{events.length > 1 ? 's' : ''} (filtres)
+            </button>
+            {isOpen && (
+                <div className="hidden-events__content">
+                    {events.map(event => (
+                        <div key={event.id} className="event-card event-card--hidden" onClick={() => onEventClick(event)}>
+                            <div className="event-card__header">
+                                <h3 className="event-card__title">{event.subjectName}</h3>
+                                <span className="event-card__timeIcon" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                    <Icons.Clock /> {event.startTime} - {event.endTime}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Views
+function DayView({ events, hiddenEvents, selectedDate, onEventClick }) {
+    const dayEvents = useMemo(() => getEventsForDate(events, selectedDate), [events, selectedDate]);
+    const dayHiddenEvents = useMemo(() => getEventsForDate(hiddenEvents, selectedDate), [hiddenEvents, selectedDate]);
+
+    if (dayEvents.length === 0 && dayHiddenEvents.length === 0) {
+        return (
+            <div className="empty-state">
+                <div className="empty-state__icon"><Icons.AlertCircle /></div>
+                <h3 className="empty-state__title">Aucun cours</h3>
+                <p>Profite bien !</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="events-list">
+            {dayEvents.map(event => <EventCard key={event.id} event={event} onClick={onEventClick} />)}
+            <HiddenEventsList events={dayHiddenEvents} onEventClick={onEventClick} />
+        </div>
+    );
+}
+
+function AgendaView({ events, hiddenEvents, onEventClick }) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const grouped = useMemo(() => {
+        const upcoming = events.filter(e => e.start >= today).slice(0, 50);
+        const upcomingHidden = hiddenEvents.filter(e => e.start >= today).slice(0, 50);
+
+        const groups = new Map();
+
+        const process = (evs, isHidden) => {
+            for (const event of evs) {
+                const key = event.start.toDateString();
+                if (!groups.has(key)) groups.set(key, { date: event.start, events: [], hidden: [] });
+                if (isHidden) groups.get(key).hidden.push(event);
+                else groups.get(key).events.push(event);
+            }
+        };
+
+        process(upcoming, false);
+        process(upcomingHidden, true);
+
+        return Array.from(groups.values()).sort((a, b) => a.date - b.date);
+    }, [events, hiddenEvents]);
+
+    if (grouped.length === 0) {
+        return <div className="empty-state"><div className="empty-state__icon"><Icons.AlertCircle /></div><h3>Aucun cours à venir</h3></div>;
+    }
+
+    return (
+        <div className="agenda-view">
+            {grouped.map(({ date, events, hidden }) => (
+                <div key={date.toDateString()} className="agenda-day">
+                    <div className="agenda-day__header">
+                        <span className="agenda-day__date">
+                            {date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                        </span>
+                        {isToday(date) && <span className="agenda-day__badge">Aujourd'hui</span>}
+                    </div>
+                    <div className="agenda-day__events" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                        {events.map(event => <EventCard key={event.id} event={event} onClick={onEventClick} />)}
+                        <HiddenEventsList events={hidden} onEventClick={onEventClick} />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// Week Navigation
+function WeekNav({ dates, selectedDate, onSelectDate, events }) {
+    const eventCounts = useMemo(() => {
+        const counts = new Map();
+        for (const event of events) counts.set(event.start.toDateString(), (counts.get(event.start.toDateString()) || 0) + 1);
+        return counts;
+    }, [events]);
+
+    return (
+        <div className="week-nav">
+            {dates.map(date => {
+                const count = eventCounts.get(date.toDateString()) || 0;
+                return (
+                    <button
+                        key={date.toISOString()}
+                        className={`week-day ${isSameDay(date, selectedDate) ? 'active' : ''} ${isToday(date) ? 'today' : ''}`}
+                        onClick={() => onSelectDate(date)}
+                    >
+                        <div className="week-day__name">{formatWeekday(date)}</div>
+                        <div className="week-day__num">{date.getDate()}</div>
+                        {count > 0 && <div className="week-day__dots">{Array.from({ length: Math.min(count, 3) }).map((_, i) => <span key={i} className="week-day__dot" />)}</div>}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+// View Mode Selector
+function ViewModeSelector({ viewMode, onChange }) {
+    const modes = [
+        { id: VIEW_MODES.DAY, label: 'Jour', icon: <Icons.Calendar /> },
+        { id: VIEW_MODES.AGENDA, label: 'Agenda', icon: <Icons.List /> },
+    ];
+
+    return (
+        <div className="view-mode-selector">
+            <div
+                className="view-mode-indicator"
+                style={{ transform: viewMode === VIEW_MODES.AGENDA ? 'translateX(100%)' : 'translateX(0)' }}
+            />
+            {modes.map(({ id, label, icon }) => (
+                <button key={id} className={`view-mode-btn ${viewMode === id ? 'active' : ''}`} onClick={() => onChange(id)}>
+                    {icon}<span className="view-mode-btn__label">{label}</span>
+                </button>
+            ))}
+        </div>
+    );
+}
+
+// Setup Screen (when no URL configured)
+function SetupScreen({ onSetup }) {
+    const [url, setUrl] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (url.trim()) onSetup(url.trim());
+    };
+
+    return (
+        <div className="setup-screen">
+            <div className="setup-screen__content">
+                <h1 className="setup-screen__title"><Icons.Calendar /> Bienvenue !</h1>
+                <p className="setup-screen__desc">
+                    Configure ton calendrier en collant ton lien ICS
+                </p>
+                <form onSubmit={handleSubmit} className="setup-screen__form">
+                    <input
+                        type="url"
+                        className="settings-input"
+                        placeholder="https://... ou webcal://..."
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        autoFocus
+                    />
+                    <button type="submit" className="btn btn--primary btn--full" disabled={!url.trim()}>
+                        <Icons.Rocket /> Go
+                    </button>
+                </form>
+                <p className="setup-screen__hint">
+                    <Icons.Mail /> Tu peux trouver ton lien ICS dans les paramètres de CELCAT dans exporter en saisissant ton adreese mail universitaire.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// Main App
+export default function App() {
+    const [settings, setSettings] = useState(loadSettings);
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    // Save settings on change
+    useEffect(() => {
+        saveSettings(settings);
+    }, [settings]);
+
+    // Load calendar data
+    const loadCalendar = useCallback(async () => {
+        if (!settings.icsUrl) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await fetchCalendarEvents(settings.icsUrl);
+            setEvents(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [settings.icsUrl]);
+
+    useEffect(() => {
+        loadCalendar();
+    }, [loadCalendar]);
+
+    // Apply filters
+    const { visible: filteredEvents, hidden: hiddenEvents } = useMemo(() => applyAllFilters(events, settings), [events, settings]);
+    const subjects = useMemo(() => getUniqueSubjects(filteredEvents), [filteredEvents]);
+    const types = useMemo(() => getUniqueTypes(filteredEvents), [filteredEvents]);
+    const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
+
+    // Navigation
+    const goToPrevWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
+    const goToNextWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
+    const goToToday = () => setSelectedDate(new Date());
+
+    // Handle initial setup
+    const handleSetup = (url) => {
+        setSettings(prev => ({ ...prev, icsUrl: url }));
+    };
+
+    // Show setup screen if no URL
+    if (!settings.icsUrl) {
+        return <SetupScreen onSetup={handleSetup} />;
+    }
+
+    return (
+        <div className="app">
+            <header className="header">
+                <div>
+                    <h1 className="header__title"><Icons.Calendar /> Mon Calendrier</h1>
+                    <p className="header__date">{formatDateHeader(selectedDate)}</p>
+                </div>
+                <div className="header__actions">
+                    <button className="btn btn--icon btn--ghost" onClick={loadCalendar} title="Rafraîchir">
+                        <Icons.Refresh />
+                    </button>
+                    <button className="btn btn--icon btn--ghost" onClick={() => setIsFilterOpen(true)} title="Filtres">
+                        <Icons.Filter />
+                    </button>
+                    <button className="btn btn--icon btn--ghost" onClick={() => setIsSettingsOpen(true)} title="Paramètres">
+                        <Icons.Settings />
+                    </button>
+                </div>
+            </header>
+
+            <ViewModeSelector viewMode={settings.viewMode} onChange={(m) => setSettings(s => ({ ...s, viewMode: m }))} />
+
+            {settings.viewMode === VIEW_MODES.DAY && (
+                <div style={{ padding: '0 var(--space-md)' }}>
+                    <div className="date-nav">
+                        <button className="date-nav__btn" onClick={goToPrevWeek}><Icons.ChevronLeft /></button>
+                        <div className="date-nav__current">
+                            <div className="date-nav__day">{selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
+                            {!isToday(selectedDate) && <div className="date-nav__today" onClick={goToToday}>Aujourd'hui</div>}
+                        </div>
+                        <button className="date-nav__btn" onClick={goToNextWeek}><Icons.ChevronRight /></button>
+                    </div>
+                    <WeekNav dates={weekDates} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={filteredEvents} />
+                </div>
+            )}
+
+
+
+            <main className="main">
+                {loading ? (
+                    <div className="loading"><div className="loading__spinner" /><p>Chargement...</p></div>
+                ) : error ? (
+                    <div className="empty-state">
+                        <div className="empty-state__icon"><Icons.AlertCircle /></div>
+                        <h3 className="empty-state__title">Erreur</h3>
+                        <p>{error}</p>
+                        <button className="btn btn--primary" onClick={loadCalendar}>Réessayer</button>
+                    </div>
+                ) : settings.viewMode === VIEW_MODES.DAY ? (
+                    <DayView
+                        events={filteredEvents}
+                        hiddenEvents={hiddenEvents}
+                        selectedDate={selectedDate}
+                        onEventClick={setSelectedEvent}
+                    />
+                ) : (
+                    <AgendaView
+                        events={filteredEvents}
+                        hiddenEvents={hiddenEvents}
+                        onEventClick={setSelectedEvent}
+                    />
+                )}
+            </main>
+
+            <SettingsPanel
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                settings={settings}
+                onSettingsChange={setSettings}
+                onReload={loadCalendar}
+            />
+
+            <FilterPanel
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                subjects={subjects}
+                types={types}
+                settings={settings}
+                onSettingsChange={setSettings}
+            />
+
+            <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+        </div>
+    );
+}
