@@ -926,8 +926,12 @@ function NextClassCountdown({ events }) {
 
     useEffect(() => {
         const updateCountdown = () => {
-            const current = getCurrentEvent(events);
-            const next = getNextEvent(events);
+            const now = new Date();
+            // Filter to only today's events
+            const todayEvents = events.filter(e => isSameDay(e.start, now));
+
+            const current = getCurrentEvent(todayEvents);
+            const next = getNextEvent(todayEvents);
 
             setCurrentEvent(current);
             setNextEvent(next);
