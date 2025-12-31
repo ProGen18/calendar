@@ -21,6 +21,9 @@ const COLORS = [
     '#fb923c', // Orange
 ];
 
+// Cache storage key
+const CACHE_KEY = 'celcat-calendar-cache';
+
 /**
  * Generate a consistent color for a subject name
  */
@@ -450,4 +453,54 @@ export function getWeekDates(date) {
     }
 
     return result;
+}
+
+/**
+ * Save events to localStorage cache
+ * @param {Array} events - Events to cache
+ * @param {string} icsUrl - The URL they were fetched from
+ */
+export function cacheEvents(events, icsUrl) {
+    try {
+        const cacheData = {
+            events: events.map(e => ({
+                ...e,
+                start: e.start.toISOString(),
+                end: e.end.toISOString(),
+            })),
+            icsUrl,
+            cachedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    } catch (e) {
+        console.warn('Failed to cache events:', e);
+    }
+}
+
+/**
+ * Load events from localStorage cache
+ * @param {string} icsUrl - The current ICS URL (must match cached URL)
+ * @returns {Object|null} Cached data with events array and cachedAt date, or null
+ */
+export function loadCachedEvents(icsUrl) {
+    try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (!cached) return null;
+
+        const data = JSON.parse(cached);
+        // Verify cache matches current URL
+        if (data.icsUrl !== icsUrl) return null;
+
+        return {
+            events: data.events.map(e => ({
+                ...e,
+                start: new Date(e.start),
+                end: new Date(e.end),
+            })),
+            cachedAt: new Date(data.cachedAt),
+        };
+    } catch (e) {
+        console.warn('Failed to load cached events:', e);
+        return null;
+    }
 }

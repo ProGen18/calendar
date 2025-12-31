@@ -5,6 +5,8 @@ import {
     filterEvents,
     getEventsForDate,
     getWeekDates,
+    cacheEvents,
+    loadCachedEvents,
 } from './calendarService';
 
 // View modes
@@ -899,23 +901,42 @@ export default function App() {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isFromCache, setIsFromCache] = useState(false);
+    const [cacheDate, setCacheDate] = useState(null);
 
     // Save settings on change
     useEffect(() => {
         saveSettings(settings);
     }, [settings]);
 
-    // Load calendar data
+    // Load calendar data with cache support
     const loadCalendar = useCallback(async () => {
         if (!settings.icsUrl) return;
 
+        // First, load from cache for immediate display
+        const cached = loadCachedEvents(settings.icsUrl);
+        if (cached) {
+            setEvents(cached.events);
+            setIsFromCache(true);
+            setCacheDate(cached.cachedAt);
+        }
+
+        // Then try to fetch fresh data
         setLoading(true);
         setError(null);
         try {
             const data = await fetchCalendarEvents(settings.icsUrl);
             setEvents(data);
+            setIsFromCache(false);
+            setCacheDate(null);
+            // Cache the fresh data
+            cacheEvents(data, settings.icsUrl);
         } catch (err) {
-            setError(err.message);
+            // If we have cached data, don't show error, just keep using cache
+            if (!cached) {
+                setError(err.message);
+            }
+            // Keep isFromCache true if we're falling back to cache
         } finally {
             setLoading(false);
         }
@@ -968,6 +989,14 @@ export default function App() {
                 <div>
                     <h1 className="header__title"><Icons.Calendar /> Mon Calendrier</h1>
                     <p className="header__date">{formatDateHeader(selectedDate)}</p>
+                    {isFromCache && (
+                        <span
+                            className="cache-badge"
+                            title={cacheDate ? `Données du ${cacheDate.toLocaleString('fr-FR')}` : 'Données en cache'}
+                        >
+                            📦 Hors ligne
+                        </span>
+                    )}
                 </div>
                 <div className="header__actions">
                     <button className="btn btn--icon btn--ghost" onClick={loadCalendar} title="Rafraîchir">
