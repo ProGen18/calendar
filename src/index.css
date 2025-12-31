@@ -202,6 +202,33 @@ svg {
 .header__actions {
   display: flex;
   gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Hide search box on mobile to prioritize action buttons */
+@media (max-width: 480px) {
+  .header {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+
+  .header__title {
+    font-size: var(--font-size-base);
+  }
+
+  .header__title svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .search-box {
+    display: none;
+  }
+
+  .header__actions {
+    gap: var(--space-xs);
+  }
 }
 
 /* Navigation Tabs */

@@ -1412,11 +1412,10 @@ export default function App() {
                     </div>
                 ) : (
                     <>
-                        {/* Widgets Section */}
-                        <div className="widgets-row">
+                        {/* Countdown - Only on today */}
+                        {isToday(selectedDate) && (
                             <NextClassCountdown events={searchedEvents} />
-                            <WeeklyStatsWidget events={filteredEvents} weekDates={weekDates} />
-                        </div>
+                        )}
 
                         {/* Main View */}
                         {settings.viewMode === VIEW_MODES.DAY ? (
@@ -1433,6 +1432,9 @@ export default function App() {
                                 onEventClick={setSelectedEvent}
                             />
                         )}
+
+                        {/* Stats at bottom */}
+                        <WeeklyStatsWidget events={filteredEvents} weekDates={weekDates} />
                     </>
                 )}
             </main>
