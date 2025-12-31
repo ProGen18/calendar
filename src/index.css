@@ -2297,12 +2297,12 @@ svg {
 }
 
 /* 3-tab View Mode Selector */
-.view-mode-selector--three .view-mode-indicator {
-  width: 33.333%;
+.view-mode-selector--three {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
-.view-mode-selector--three .view-mode-btn {
-  flex: 1;
+.view-mode-selector--three .view-mode-indicator {
+  width: calc(33.333% - 4px);
 }
 
 /* ============================================
