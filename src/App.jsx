@@ -925,10 +925,26 @@ export default function App() {
         loadCalendar();
     }, [loadCalendar]);
 
-    // Apply filters
+    // Calculate events for filter options
+    // We want to show options for all events that are VALID (not banned, correct group)
+    // even if they are currently hidden by the user (unchecked in list).
+    const filterOptionsEvents = useMemo(() => {
+        return events.filter(event => {
+            // Respect Banned Patterns
+            if (matchesBannedPatterns(event, settings.bannedPatterns)) return false;
+            // Respect Group Filter
+            if (settings.groupNumber && event.groupNumber && event.groupNumber !== settings.groupNumber) return false;
+
+            return true;
+        });
+    }, [events, settings.bannedPatterns, settings.groupNumber]);
+
+    // Apply all filters for the view
     const { visible: filteredEvents, hidden: hiddenEvents } = useMemo(() => applyAllFilters(events, settings), [events, settings]);
-    const subjects = useMemo(() => getUniqueSubjects(filteredEvents), [filteredEvents]);
-    const types = useMemo(() => getUniqueTypes(filteredEvents), [filteredEvents]);
+
+    // Generate options from the stable list
+    const subjects = useMemo(() => getUniqueSubjects(filterOptionsEvents), [filterOptionsEvents]);
+    const types = useMemo(() => getUniqueTypes(filterOptionsEvents), [filterOptionsEvents]);
     const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
 
     // Navigation
