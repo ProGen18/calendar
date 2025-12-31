@@ -195,6 +195,31 @@ const Icons = {
             <polyline points="22,6 12,13 2,6" />
         </svg>
     ),
+    Search: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+    ),
+    ExternalLink: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+        </svg>
+    ),
+    BarChart: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="20" x2="12" y2="10" />
+            <line x1="18" y1="20" x2="18" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="16" />
+        </svg>
+    ),
+    Zap: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+    ),
 };
 
 // Helper functions
@@ -297,6 +322,93 @@ function getUniqueSubjects(events) {
         subjects.get(event.subjectName).count++;
     }
     return Array.from(subjects.values()).sort((a, b) => b.count - a.count);
+}
+
+// Get next upcoming event
+function getNextEvent(events) {
+    const now = new Date();
+    return events.find(e => e.start > now) || null;
+}
+
+// Get current ongoing event
+function getCurrentEvent(events) {
+    const now = new Date();
+    return events.find(e => e.start <= now && e.end > now) || null;
+}
+
+// Calculate time remaining until a date
+function getTimeRemaining(targetDate) {
+    const now = new Date();
+    const diff = targetDate - now;
+
+    if (diff <= 0) return null;
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return { hours, minutes, seconds, total: diff };
+}
+
+// Calculate weekly statistics
+function getWeeklyStats(events, weekDates) {
+    const weekStart = new Date(weekDates[0]);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekDates[6]);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    const weekEvents = events.filter(e => e.start >= weekStart && e.start <= weekEnd);
+
+    let totalMinutes = 0;
+    const byType = { CM: 0, TD: 0, TP: 0, OTHER: 0, EXAM: 0 };
+    const byDay = [0, 0, 0, 0, 0, 0, 0];
+
+    for (const event of weekEvents) {
+        totalMinutes += event.duration || 0;
+        byType[event.type] = (byType[event.type] || 0) + (event.duration || 0);
+        const dayIndex = weekDates.findIndex(d => isSameDay(d, event.start));
+        if (dayIndex >= 0) byDay[dayIndex] += event.duration || 0;
+    }
+
+    return {
+        totalHours: Math.round(totalMinutes / 60 * 10) / 10,
+        eventCount: weekEvents.length,
+        byType,
+        byDay,
+    };
+}
+
+// Generate Google Calendar URL
+function generateGoogleCalendarUrl(event) {
+    const formatGoogleDate = (date) => {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: event.subjectName || event.title,
+        dates: `${formatGoogleDate(event.start)}/${formatGoogleDate(event.end)}`,
+        details: [
+            event.staff?.length ? `Enseignant: ${event.staff.join(', ')}` : '',
+            event.notes || '',
+        ].filter(Boolean).join('\n'),
+        location: event.room || '',
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+// Search filter function
+function searchEvents(events, query) {
+    if (!query.trim()) return events;
+    const q = query.toLowerCase();
+    return events.filter(e => {
+        const searchable = [
+            e.title, e.subjectName, e.room, e.module, e.notes,
+            e.staff?.join(' '),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return searchable.includes(q);
+    });
 }
 
 // Settings Panel Component
@@ -676,8 +788,113 @@ function EventDetailModal({ event, onClose }) {
                         </div>
                     )}
                 </div>
+                <div className="modal__footer">
+                    <a
+                        href={generateGoogleCalendarUrl(event)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn--primary btn--full"
+                    >
+                        <Icons.ExternalLink /> Ajouter à Google Calendar
+                    </a>
+                </div>
             </div>
         </>
+    );
+}
+
+// Next Class Countdown Component
+function NextClassCountdown({ events }) {
+    const [timeRemaining, setTimeRemaining] = useState(null);
+    const [currentEvent, setCurrentEvent] = useState(null);
+    const [nextEvent, setNextEvent] = useState(null);
+
+    useEffect(() => {
+        const updateCountdown = () => {
+            const current = getCurrentEvent(events);
+            const next = getNextEvent(events);
+
+            setCurrentEvent(current);
+            setNextEvent(next);
+
+            if (current) {
+                setTimeRemaining(getTimeRemaining(current.end));
+            } else if (next) {
+                setTimeRemaining(getTimeRemaining(next.start));
+            } else {
+                setTimeRemaining(null);
+            }
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+        return () => clearInterval(interval);
+    }, [events]);
+
+    if (!currentEvent && !nextEvent) return null;
+
+    const displayEvent = currentEvent || nextEvent;
+    const isOngoing = !!currentEvent;
+
+    return (
+        <div className={`countdown-widget ${isOngoing ? 'countdown-widget--ongoing' : ''}`}>
+            <div className="countdown-widget__header">
+                <Icons.Zap />
+                <span>{isOngoing ? 'En cours' : 'Prochain cours'}</span>
+            </div>
+            <div className="countdown-widget__title">{displayEvent.subjectName}</div>
+            <div className="countdown-widget__details">
+                {displayEvent.room && <span><Icons.MapPin /> {displayEvent.room}</span>}
+                <span><Icons.Clock /> {displayEvent.startTime} - {displayEvent.endTime}</span>
+            </div>
+            {timeRemaining && (
+                <div className="countdown-widget__time">
+                    {isOngoing ? 'Fin dans ' : 'Dans '}
+                    {timeRemaining.hours > 0 && <span className="countdown-widget__unit">{timeRemaining.hours}<small>h</small></span>}
+                    <span className="countdown-widget__unit">{String(timeRemaining.minutes).padStart(2, '0')}<small>m</small></span>
+                    <span className="countdown-widget__unit">{String(timeRemaining.seconds).padStart(2, '0')}<small>s</small></span>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Weekly Stats Widget Component
+function WeeklyStatsWidget({ events, weekDates }) {
+    const stats = useMemo(() => getWeeklyStats(events, weekDates), [events, weekDates]);
+
+    if (stats.eventCount === 0) return null;
+
+    const maxDayMinutes = Math.max(...stats.byDay);
+
+    return (
+        <div className="stats-widget">
+            <div className="stats-widget__header">
+                <Icons.BarChart />
+                <span>Cette semaine</span>
+            </div>
+            <div className="stats-widget__summary">
+                <div className="stats-widget__stat">
+                    <span className="stats-widget__value">{stats.totalHours}</span>
+                    <span className="stats-widget__label">heures</span>
+                </div>
+                <div className="stats-widget__stat">
+                    <span className="stats-widget__value">{stats.eventCount}</span>
+                    <span className="stats-widget__label">cours</span>
+                </div>
+            </div>
+            <div className="stats-widget__bars">
+                {stats.byDay.map((minutes, i) => (
+                    <div
+                        key={i}
+                        className={`stats-widget__bar ${i === new Date().getDay() - 1 ? 'stats-widget__bar--today' : ''}`}
+                        style={{ '--bar-height': maxDayMinutes > 0 ? `${(minutes / maxDayMinutes) * 100}%` : '0%' }}
+                    >
+                        <span className="stats-widget__bar-label">{['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -903,6 +1120,7 @@ export default function App() {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isFromCache, setIsFromCache] = useState(false);
     const [cacheDate, setCacheDate] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Save settings on change
     useEffect(() => {
@@ -963,6 +1181,9 @@ export default function App() {
     // Apply all filters for the view
     const { visible: filteredEvents, hidden: hiddenEvents } = useMemo(() => applyAllFilters(events, settings), [events, settings]);
 
+    // Apply search filter
+    const searchedEvents = useMemo(() => searchEvents(filteredEvents, searchQuery), [filteredEvents, searchQuery]);
+
     // Generate options from the stable list
     const subjects = useMemo(() => getUniqueSubjects(filterOptionsEvents), [filterOptionsEvents]);
     const types = useMemo(() => getUniqueTypes(filterOptionsEvents), [filterOptionsEvents]);
@@ -999,6 +1220,21 @@ export default function App() {
                     )}
                 </div>
                 <div className="header__actions">
+                    <div className="search-box">
+                        <Icons.Search />
+                        <input
+                            type="text"
+                            className="search-box__input"
+                            placeholder="Rechercher..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        {searchQuery && (
+                            <button className="search-box__clear" onClick={() => setSearchQuery('')}>
+                                <Icons.X />
+                            </button>
+                        )}
+                    </div>
                     <button className="btn btn--icon btn--ghost" onClick={loadCalendar} title="Rafraîchir">
                         <Icons.Refresh />
                     </button>
@@ -1028,9 +1264,8 @@ export default function App() {
             )}
 
 
-
             <main className="main">
-                {loading ? (
+                {loading && events.length === 0 ? (
                     <div className="loading"><div className="loading__spinner" /><p>Chargement...</p></div>
                 ) : error ? (
                     <div className="empty-state">
@@ -1039,19 +1274,30 @@ export default function App() {
                         <p>{error}</p>
                         <button className="btn btn--primary" onClick={loadCalendar}>Réessayer</button>
                     </div>
-                ) : settings.viewMode === VIEW_MODES.DAY ? (
-                    <DayView
-                        events={filteredEvents}
-                        hiddenEvents={hiddenEvents}
-                        selectedDate={selectedDate}
-                        onEventClick={setSelectedEvent}
-                    />
                 ) : (
-                    <AgendaView
-                        events={filteredEvents}
-                        hiddenEvents={hiddenEvents}
-                        onEventClick={setSelectedEvent}
-                    />
+                    <>
+                        {/* Widgets Section */}
+                        <div className="widgets-row">
+                            <NextClassCountdown events={searchedEvents} />
+                            <WeeklyStatsWidget events={filteredEvents} weekDates={weekDates} />
+                        </div>
+
+                        {/* Main View */}
+                        {settings.viewMode === VIEW_MODES.DAY ? (
+                            <DayView
+                                events={searchedEvents}
+                                hiddenEvents={hiddenEvents}
+                                selectedDate={selectedDate}
+                                onEventClick={setSelectedEvent}
+                            />
+                        ) : (
+                            <AgendaView
+                                events={searchedEvents}
+                                hiddenEvents={hiddenEvents}
+                                onEventClick={setSelectedEvent}
+                            />
+                        )}
+                    </>
                 )}
             </main>
 
