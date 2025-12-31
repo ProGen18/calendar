@@ -451,18 +451,47 @@ function generateICSContent(event) {
     return icsContent;
 }
 
-// Download ICS file
-function downloadICSFile(event) {
+// Share/Add to calendar - uses native share on mobile, download on desktop
+async function shareToCalendar(event) {
     const content = generateICSContent(event);
+    const filename = `${(event.subjectName || 'event').replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+
+    // Try Web Share API first (mobile native share)
+    if (navigator.share && navigator.canShare) {
+        try {
+            const file = new File([content], filename, { type: 'text/calendar' });
+            if (navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: event.subjectName || 'Événement',
+                });
+                return;
+            }
+        } catch (err) {
+            console.log('Share failed, trying data URL', err);
+        }
+    }
+
+    // Fallback: Use data URL which opens calendar app directly on mobile
     const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
+
+    // Create link and trigger
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${(event.subjectName || 'event').replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    link.download = filename;
+
+    // On iOS Safari, using location.href opens the calendar app
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+        window.location.href = url;
+    } else {
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // Settings Panel Component
@@ -897,10 +926,10 @@ function EventDetailModal({ event, onClose }) {
                     <div className="modal__export-buttons">
                         <button
                             className="btn btn--secondary"
-                            onClick={() => downloadICSFile(event)}
-                            title="Compatible Apple Calendar, Outlook, etc."
+                            onClick={() => shareToCalendar(event)}
+                            title="Ajouter à votre calendrier"
                         >
-                            <Icons.Save /> Télécharger .ics
+                            <Icons.Calendar /> Ajouter au calendrier
                         </button>
                         <a
                             href={generateGoogleCalendarUrl(event)}
