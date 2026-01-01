@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
     fetchCalendarEvents,
     getUniqueTypes,
@@ -1426,6 +1426,34 @@ export default function App() {
     const goToPrevWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
     const goToNextWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
     const goToToday = () => setSelectedDate(new Date());
+    const goToPrevDay = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n; });
+    const goToNextDay = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n; });
+
+    // Swipe gestures
+    const touchStart = useRef(null);
+    const touchEnd = useRef(null);
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e) => {
+        touchEnd.current = null;
+        touchStart.current = e.targetTouches[0].clientX;
+    };
+
+    const onTouchMove = (e) => {
+        touchEnd.current = e.targetTouches[0].clientX;
+    };
+
+    const onTouchEnd = () => {
+        if (!touchStart.current || !touchEnd.current) return;
+        const distance = touchStart.current - touchEnd.current;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (settings.viewMode === VIEW_MODES.DAY) {
+            if (isLeftSwipe) goToNextDay();
+            if (isRightSwipe) goToPrevDay();
+        }
+    };
 
     // Handle initial setup
     const handleSetup = (url) => {
@@ -1438,7 +1466,12 @@ export default function App() {
     }
 
     return (
-        <div className="app">
+        <div
+            className="app"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+        >
             <header className="header">
                 <div>
                     <h1 className="header__title"><Icons.Calendar /> Mon Calendrier</h1>

@@ -1921,6 +1921,11 @@ svg {
   background: var(--accent-primary);
 }
 
+
+.week-day.active .week-day__dot {
+  background: white
+}
+
 /* ============================================
    Search Box
    ============================================ */
