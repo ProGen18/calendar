@@ -13,6 +13,7 @@ import {
 const VIEW_MODES = {
     DAY: 'day',
     AGENDA: 'agenda',
+    MONTH: 'month',
     TOOLS: 'tools',
 };
 
@@ -219,6 +220,13 @@ const Icons = {
     Zap: () => (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+    ),
+    MoreVertical: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="12" cy="5" r="1" />
+            <circle cx="12" cy="19" r="1" />
         </svg>
     ),
 };
@@ -1099,6 +1107,101 @@ function HiddenEventsList({ events, onEventClick }) {
     );
 }
 
+// Month View
+function MonthView({ events, selectedDate, onSelectDate, onEventClick }) {
+    const { days, weekDays } = useMemo(() => {
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
+
+        // First day of month
+        const firstDay = new Date(year, month, 1);
+        // Last day of month
+        const lastDay = new Date(year, month + 1, 0);
+
+        // Days to show from prev month (to fill first row)
+        // Day 1 (Mon) -> 0 padding, Day 0 (Sun) -> 6 padding
+        let paddingStart = firstDay.getDay() - 1;
+        if (paddingStart === -1) paddingStart = 6;
+
+        const days = [];
+
+        // Prev month days
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+        for (let i = paddingStart - 1; i >= 0; i--) {
+            days.push({
+                date: new Date(year, month - 1, prevMonthLastDay - i),
+                isOutside: true
+            });
+        }
+
+        // Current month days
+        for (let i = 1; i <= lastDay.getDate(); i++) {
+            days.push({
+                date: new Date(year, month, i),
+                isOutside: false
+            });
+        }
+
+        // Next month days (fill to 6 rows = 42 cells)
+        const remaining = 42 - days.length;
+        for (let i = 1; i <= remaining; i++) {
+            days.push({
+                date: new Date(year, month + 1, i),
+                isOutside: true
+            });
+        }
+
+        return { days, weekDays: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] };
+    }, [selectedDate]);
+
+    // Group events by date for fast lookup
+    const eventsByDate = useMemo(() => {
+        const map = new Map(); // key: "YYYY-MM-DD" -> [events]
+        for (const event of events) {
+            const key = event.start.toDateString();
+            if (!map.has(key)) map.set(key, []);
+            map.get(key).push(event);
+        }
+        return map;
+    }, [events]);
+
+    return (
+        <div className="month-view">
+            <div className="month-header">
+                {weekDays.map(d => <div key={d} className="month-header__day">{d}</div>)}
+            </div>
+            <div className="month-grid">
+                {days.map((day, i) => {
+                    const dateKey = day.date.toDateString();
+                    const dayEvents = eventsByDate.get(dateKey) || [];
+                    const isSelected = isSameDay(day.date, selectedDate);
+                    const isTodayDate = isToday(day.date);
+
+                    return (
+                        <div
+                            key={i}
+                            className={`month-day ${day.isOutside ? 'month-day--outside' : ''} ${isSelected ? 'month-day--selected' : ''} ${isTodayDate ? 'month-day--today' : ''}`}
+                            onClick={() => onSelectDate(day.date)}
+                        >
+                            <span className="month-day__number">{day.date.getDate()}</span>
+                            <div className="month-day__dots">
+                                {dayEvents.map((evt, idx) => (
+                                    <div
+                                        key={evt.id + idx}
+                                        className="month-day__dot"
+                                        style={{ background: getSubjectColor(evt.subjectName) }}
+                                        title={evt.subjectName}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 // Views
 function DayView({ events, hiddenEvents, selectedDate, onEventClick }) {
     const dayEvents = useMemo(() => getEventsForDate(events, selectedDate), [events, selectedDate]);
@@ -1204,17 +1307,17 @@ function ViewModeSelector({ viewMode, onChange }) {
     const modes = [
         { id: VIEW_MODES.DAY, label: 'Jour', icon: <Icons.Calendar /> },
         { id: VIEW_MODES.AGENDA, label: 'Agenda', icon: <Icons.List /> },
-        { id: VIEW_MODES.TOOLS, label: 'Plus', icon: <Icons.Search /> },
+        { id: VIEW_MODES.MONTH, label: 'Mois', icon: <Icons.Calendar /> },
     ];
 
     const activeIndex = modes.findIndex(m => m.id === viewMode);
 
     return (
-        <div className="view-mode-selector view-mode-selector--three">
-            <div
-                className="view-mode-indicator"
-                style={{ transform: `translateX(${activeIndex * 100}%)` }}
-            />
+        <div
+            className="view-mode-selector view-mode-selector--three"
+            style={{ '--active-index': activeIndex }}
+        >
+            <div className="view-mode-indicator" style={{ opacity: activeIndex === -1 ? 0 : 1 }} />
             {modes.map(({ id, label, icon }) => (
                 <button key={id} className={`view-mode-btn ${viewMode === id ? 'active' : ''}`} onClick={() => onChange(id)}>
                     {icon}<span className="view-mode-btn__label">{label}</span>
@@ -1294,6 +1397,44 @@ function ToolsView({ events, weekDates, onEventClick }) {
     );
 }
 
+// Action Menu Component
+function ActionMenu({ isOpen, onClose, onAction }) {
+    if (!isOpen) return null;
+
+    return (
+        <>
+            <div className="action-menu-overlay" onClick={onClose} />
+            <div className="action-menu">
+                <button
+                    className="action-menu__item"
+                    onClick={() => onAction('refresh')}
+                >
+                    <Icons.Refresh /> Rafraîchir
+                </button>
+                <div className="action-menu__divider" />
+                <button
+                    className="action-menu__item"
+                    onClick={() => onAction('tools')}
+                >
+                    <Icons.Search /> Outils
+                </button>
+                <button
+                    className="action-menu__item"
+                    onClick={() => onAction('filters')}
+                >
+                    <Icons.Filter /> Filtres
+                </button>
+                <button
+                    className="action-menu__item"
+                    onClick={() => onAction('settings')}
+                >
+                    <Icons.Settings /> Paramètres
+                </button>
+            </div>
+        </>
+    );
+}
+
 // Setup Screen (when no URL configured)
 function SetupScreen({ onSetup }) {
     const [url, setUrl] = useState('');
@@ -1341,6 +1482,7 @@ export default function App() {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
     const [isFromCache, setIsFromCache] = useState(false);
     const [cacheDate, setCacheDate] = useState(null);
 
@@ -1379,6 +1521,18 @@ export default function App() {
                     console.warn('Failed to load secondary feed:', secErr);
                 }
             }
+
+            // Deduplicate events (check for same ID and Start time)
+            const seen = new Set();
+            const uniqueEvents = [];
+            for (const event of allEvents) {
+                const key = `${event.id}_${event.start.getTime()}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueEvents.push(event);
+                }
+            }
+            allEvents = uniqueEvents;
 
             setEvents(allEvents);
             setIsFromCache(false);
@@ -1428,6 +1582,18 @@ export default function App() {
     const goToToday = () => setSelectedDate(new Date());
     const goToPrevDay = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n; });
     const goToNextDay = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n; });
+    const goToPrevMonth = () => setSelectedDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; });
+    const goToNextMonth = () => setSelectedDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; });
+
+    const handlePrev = () => {
+        if (settings.viewMode === VIEW_MODES.MONTH) goToPrevMonth();
+        else goToPrevWeek();
+    };
+
+    const handleNext = () => {
+        if (settings.viewMode === VIEW_MODES.MONTH) goToNextMonth();
+        else goToNextWeek();
+    };
 
     // Swipe gestures
 
@@ -1465,10 +1631,19 @@ export default function App() {
                 if (isLeftSwipe) goToNextDay();
                 if (isRightSwipe) goToPrevDay();
             } else if (touchZone.current === 'date-nav') {
-                if (isLeftSwipe) goToNextWeek();
-                if (isRightSwipe) goToPrevWeek();
+                if (isLeftSwipe) handleNext();
+                if (isRightSwipe) handlePrev();
+            }
+        } else if (settings.viewMode === VIEW_MODES.MONTH) {
+            if (touchZone.current === 'main' || touchZone.current === 'date-nav') {
+                if (isLeftSwipe) goToNextMonth();
+                if (isRightSwipe) goToPrevMonth();
             }
         }
+
+        // Reset touches to prevent double firing
+        touchStart.current = null;
+        touchEnd.current = null;
     };
 
     // Handle initial setup
@@ -1501,16 +1676,26 @@ export default function App() {
                         </span>
                     )}
                 </div>
-                <div className="header__actions">
-                    <button className="btn btn--icon btn--ghost" onClick={loadCalendar} title="Rafraîchir">
-                        <Icons.Refresh />
+                <div className="header__actions" style={{ position: 'relative' }}>
+                    <button
+                        className={`btn btn--icon ${isActionMenuOpen ? 'btn--primary' : 'btn--ghost'}`}
+                        onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+                        title="Menu"
+                    >
+                        <Icons.MoreVertical />
                     </button>
-                    <button className="btn btn--icon btn--ghost" onClick={() => setIsFilterOpen(true)} title="Filtres">
-                        <Icons.Filter />
-                    </button>
-                    <button className="btn btn--icon btn--ghost" onClick={() => setIsSettingsOpen(true)} title="Paramètres">
-                        <Icons.Settings />
-                    </button>
+
+                    <ActionMenu
+                        isOpen={isActionMenuOpen}
+                        onClose={() => setIsActionMenuOpen(false)}
+                        onAction={(action) => {
+                            setIsActionMenuOpen(false);
+                            if (action === 'refresh') loadCalendar();
+                            if (action === 'tools') setSettings(s => ({ ...s, viewMode: VIEW_MODES.TOOLS }));
+                            if (action === 'filters') setIsFilterOpen(true);
+                            if (action === 'settings') setIsSettingsOpen(true);
+                        }}
+                    />
                 </div>
             </header>
 
@@ -1519,18 +1704,42 @@ export default function App() {
             {settings.viewMode === VIEW_MODES.DAY && (
                 <div style={{ padding: '0 var(--space-md)' }}>
                     <div className="date-nav">
-                        <button className="date-nav__btn" onClick={goToPrevWeek}><Icons.ChevronLeft /></button>
+                        <button className="date-nav__btn" onClick={handlePrev}><Icons.ChevronLeft /></button>
                         <div className="date-nav__current">
                             <div className="date-nav__day">{selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
                             {!isToday(selectedDate) && <div className="date-nav__today" onClick={goToToday}>Aujourd'hui</div>}
                         </div>
-                        <button className="date-nav__btn" onClick={goToNextWeek}><Icons.ChevronRight /></button>
+                        <button className="date-nav__btn" onClick={handleNext}><Icons.ChevronRight /></button>
                     </div>
-                    <WeekNav dates={weekDates} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={filteredEvents} />
+                    {settings.viewMode === VIEW_MODES.DAY && (
+                        <WeekNav dates={weekDates} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={filteredEvents} />
+                    )}
                 </div>
             )}
 
-            <main className="main">
+            {settings.viewMode === VIEW_MODES.MONTH && (
+                <div style={{ padding: '0 var(--space-md)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <div className="date-nav">
+                        <button className="date-nav__btn" onClick={handlePrev}><Icons.ChevronLeft /></button>
+                        <div className="date-nav__current">
+                            <div className="date-nav__day">{selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
+                            {!isToday(selectedDate) && <div className="date-nav__today" onClick={goToToday}>Aujourd'hui</div>}
+                        </div>
+                        <button className="date-nav__btn" onClick={handleNext}><Icons.ChevronRight /></button>
+                    </div>
+                    <MonthView
+                        events={filteredEvents}
+                        selectedDate={selectedDate}
+                        onSelectDate={(date) => {
+                            setSelectedDate(date);
+                            setSettings(s => ({ ...s, viewMode: VIEW_MODES.DAY }));
+                        }}
+                        onEventClick={setSelectedEvent}
+                    />
+                </div>
+            )}
+
+            <main className="main" style={{ display: settings.viewMode === VIEW_MODES.MONTH ? 'none' : undefined }}>
                 {loading && events.length === 0 ? (
                     <div className="loading"><div className="loading__spinner" /><p>Chargement...</p></div>
                 ) : error ? (
@@ -1546,6 +1755,8 @@ export default function App() {
                         weekDates={weekDates}
                         onEventClick={setSelectedEvent}
                     />
+                ) : settings.viewMode === VIEW_MODES.MONTH ? (
+                    null
                 ) : settings.viewMode === VIEW_MODES.DAY ? (
                     <DayView
                         events={filteredEvents}
