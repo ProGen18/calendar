@@ -1430,13 +1430,24 @@ export default function App() {
     const goToNextDay = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n; });
 
     // Swipe gestures
+
     const touchStart = useRef(null);
     const touchEnd = useRef(null);
+    const touchZone = useRef(null);
     const minSwipeDistance = 50;
 
     const onTouchStart = (e) => {
         touchEnd.current = null;
         touchStart.current = e.targetTouches[0].clientX;
+
+        // Identify the zone
+        if (e.target.closest('.main')) {
+            touchZone.current = 'main';
+        } else if (e.target.closest('.date-nav')) {
+            touchZone.current = 'date-nav';
+        } else {
+            touchZone.current = null;
+        }
     };
 
     const onTouchMove = (e) => {
@@ -1450,8 +1461,13 @@ export default function App() {
         const isRightSwipe = distance < -minSwipeDistance;
 
         if (settings.viewMode === VIEW_MODES.DAY) {
-            if (isLeftSwipe) goToNextDay();
-            if (isRightSwipe) goToPrevDay();
+            if (touchZone.current === 'main') {
+                if (isLeftSwipe) goToNextDay();
+                if (isRightSwipe) goToPrevDay();
+            } else if (touchZone.current === 'date-nav') {
+                if (isLeftSwipe) goToNextWeek();
+                if (isRightSwipe) goToPrevWeek();
+            }
         }
     };
 
