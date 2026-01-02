@@ -6,7 +6,7 @@
 
 > Une Progressive Web App moderne et élégante pour consulter votre emploi du temps universitaire français (CELCAT, Hyperplanning, ADE Campus).
 
-![Calendar Preview](https://ibb.co/JFv3Tnkn)
+![Calendar Preview](https://i.ibb.co/BKynJLsL/119shots-so.png)
 
 ---
 
