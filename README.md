@@ -2,11 +2,11 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/ProGen18/calendar)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/deploy-status)](https://app.netlify.com/)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/c77ab4bd-4d46-466d-b7f8-4926006abeb5/deploy-status)](https://app.netlify.com/projects/calendar-bysteph/deploys)
 
 > Une Progressive Web App moderne et élégante pour consulter votre emploi du temps universitaire français (CELCAT, Hyperplanning, ADE Campus).
 
-![Calendar Preview](https://via.placeholder.com/800x400/6366f1/ffffff?text=Steph+Calendar)
+![Calendar Preview](https://ibb.co/JFv3Tnkn)
 
 ---
 
@@ -123,16 +123,6 @@ npm run build
 npm run preview
 ```
 
-### Déploiement Netlify
-
-Le fichier `netlify.toml` est configuré pour un déploiement automatique :
-
-```bash
-# Push sur main pour déployer
-git push origin main
-```
-
----
 
 ## 📁 Structure du projet
 
