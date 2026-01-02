@@ -13,7 +13,7 @@ const COLORS = [
     '#f59e0b', // Amber
     '#8b5cf6', // Violet
     '#06b6d4', // Cyan
-    '#f43f5e', // Rose
+    '#f43f5e', // Rosee
     '#84cc16', // Lime
     '#0ea5e9', // Sky
     '#d946ef', // Fuchsia

@@ -1745,7 +1745,7 @@ export default function App() {
                 ) : error ? (
                     <div className="empty-state">
                         <div className="empty-state__icon"><Icons.AlertCircle /></div>
-                        <h3 className="empty-state__title">Erreur</h3>
+                        <h3 className="empty-state__title">Erreur !</h3>
                         <p>{error}</p>
                         <button className="btn btn--primary" onClick={loadCalendar}>Réessayer</button>
                     </div>
