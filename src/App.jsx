@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = {
     bannedPatterns: [], // Array of {pattern: string, isRegex: boolean, enabled: boolean}
     hiddenSubjects: [],
     hiddenTypes: [],
+    hideSunday: true, // Hide Sunday in week navigation
     viewMode: VIEW_MODES.DAY,
 };
 
@@ -53,6 +54,51 @@ function saveSettings(settings) {
     } catch (e) {
         console.error('Failed to save settings:', e);
     }
+}
+
+function formatTeacherName(name) {
+    if (!name) return '';
+
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 0) return '';
+
+    if (parts.length === 1) {
+        return parts[0].toUpperCase();
+    }
+
+    const isFirstPartUppercase = parts[0] === parts[0].toUpperCase() && /^[A-ZÀÂÄÉÈÊËÏÎÔÙÛÜÇ-]+$/.test(parts[0]);
+    const isLastPartUppercase = parts[parts.length - 1] === parts[parts.length - 1].toUpperCase() && /^[A-ZÀÂÄÉÈÊËÏÎÔÙÛÜÇ-]+$/.test(parts[parts.length - 1]);
+
+    let lastName, firstName;
+
+    if (isFirstPartUppercase && !isLastPartUppercase) {
+        lastName = parts[0];
+        firstName = parts.slice(1).join(' ');
+    } else if (isLastPartUppercase && !isFirstPartUppercase) {
+        firstName = parts.slice(0, -1).join(' ');
+        lastName = parts[parts.length - 1];
+    } else {
+        lastName = parts[0];
+        firstName = parts.slice(1).join(' ');
+    }
+    const formattedLastName = lastName.toUpperCase();
+    const formattedFirstName = firstName
+        ? firstName.split(' ').map(p =>
+            p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+        ).join(' ')
+        : '';
+
+    return formattedFirstName
+        ? `${formattedLastName} ${formattedFirstName}`
+        : formattedLastName;
+}
+
+/**
+ * Format all teacher names in an array
+ */
+function formatTeachers(staff) {
+    if (!staff || staff.length === 0) return '';
+    return staff.map(formatTeacherName).join(', ');
 }
 
 // Icons as SVG components
@@ -735,6 +781,23 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                                     </div>
                                 )}
                             </div>
+
+                            {/* Hide Sunday Option */}
+                            <div style={{ marginTop: 'var(--space-md)' }}>
+                                <div className="toggle-item">
+                                    <div className="toggle-item__label">
+                                        <span className="toggle-item__text">Masquer les dimanches</span>
+                                    </div>
+                                    <label className="toggle-switch">
+                                        <input
+                                            type="checkbox"
+                                            checked={localSettings.hideSunday ?? true}
+                                            onChange={(e) => setLocalSettings(prev => ({ ...prev, hideSunday: e.target.checked }))}
+                                        />
+                                        <span className="toggle-switch__slider" />
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     </details>
 
@@ -1072,7 +1135,7 @@ function EventCard({ event, onClick }) {
             </div>
             <div className="event-card__details">
                 {event.room && <span className="event-card__detail"><Icons.MapPin />{event.room}</span>}
-                {event.staff?.length > 0 && <span className="event-card__detail"><Icons.User />{event.staff[0]}</span>}
+                {event.staff?.length > 0 && <span className="event-card__detail"><Icons.User />{formatTeachers(event.staff)}</span>}
             </div>
         </div>
     );
@@ -1275,16 +1338,24 @@ function AgendaView({ events, hiddenEvents, onEventClick }) {
 }
 
 // Week Navigation
-function WeekNav({ dates, selectedDate, onSelectDate, events }) {
+function WeekNav({ dates, selectedDate, onSelectDate, events, hideSunday }) {
     const eventCounts = useMemo(() => {
         const counts = new Map();
         for (const event of events) counts.set(event.start.toDateString(), (counts.get(event.start.toDateString()) || 0) + 1);
         return counts;
     }, [events]);
 
+    // Filter out Sundays if hideSunday is enabled
+    const displayDates = useMemo(() => {
+        if (hideSunday) {
+            return dates.filter(date => date.getDay() !== 0); // 0 = Sunday
+        }
+        return dates;
+    }, [dates, hideSunday]);
+
     return (
         <div className="week-nav">
-            {dates.map(date => {
+            {displayDates.map(date => {
                 const count = eventCounts.get(date.toDateString()) || 0;
                 return (
                     <button
@@ -1712,7 +1783,7 @@ export default function App() {
                         <button className="date-nav__btn" onClick={handleNext}><Icons.ChevronRight /></button>
                     </div>
                     {settings.viewMode === VIEW_MODES.DAY && (
-                        <WeekNav dates={weekDates} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={filteredEvents} />
+                        <WeekNav dates={weekDates} selectedDate={selectedDate} onSelectDate={setSelectedDate} events={filteredEvents} hideSunday={settings.hideSunday} />
                     )}
                 </div>
             )}

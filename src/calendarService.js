@@ -58,17 +58,88 @@ function parseEventType(title, description) {
 }
 
 /**
- * Extract clean subject name (remove type suffixes)
+ * Extract clean subject name
+ * Handles Hyperplanning format: "A311 Atelier de projet - GIVELET - Gpe 5"
+ * Returns just the subject name: "Atelier de projet"
  */
-function extractSubjectName(title) {
-    return title
+function extractSubjectName(title, parsedDesc) {
+    if (!title) return 'Sans titre';
+
+    let cleaned = title;
+
+    // First, try to use module/matière from description if available (most reliable)
+    if (parsedDesc?.module) {
+        // Remove any code prefix from module too (e.g., "A313 Représentations Architect" -> "Représentations Architect")
+        const moduleClean = parsedDesc.module.replace(/^[A-Z]{1,4}[-]?\d{2,4}\s+/i, '').trim();
+        if (moduleClean) return moduleClean;
+    }
+
+    // Hyperplanning format: "CODE Subject - Teacher - Group"
+    // Split by " - " and take the first part, then remove the code
+    const parts = cleaned.split(' - ');
+    if (parts.length > 1) {
+        // Take first part (code + subject)
+        cleaned = parts[0];
+    }
+
+    // Remove module code prefix patterns:
+    // A311, A312, AP332, ECO-03, R104, M4206, etc.
+    cleaned = cleaned
+        .replace(/^[A-Z]{1,4}[-]?\d{2,4}\s+/i, '')  // A311, AP332, R104, M4206
+        .replace(/^[A-Z]{2,4}-\d{2}\s+\d{2}\s+/i, '')  // ECO-03 03 (remove duplicate number)
+        .trim();
+
+    // Remove type suffixes (CM, TD, TP, etc.)
+    cleaned = cleaned
         .replace(/;\s*(CM|TD|TP|Examen|DS|Partiel)\s*/gi, '')
         .replace(/\s*(CM|TD|TP|Examen|DS|Partiel)\s*$/gi, '')
         .trim();
+
+    return cleaned || 'Sans titre';
 }
 
 /**
- * Parse description field from CELCAT format
+ * Extract module code from title (A311, ECO-03, etc.)
+ */
+function extractModuleCode(title) {
+    if (!title) return null;
+
+    // Match patterns: A311, AP332, R104, M4206, ECO-03
+    const codeMatch = title.match(/^([A-Z]{1,4}[-]?\d{2,4})/i);
+    return codeMatch ? codeMatch[1] : null;
+}
+
+/**
+ * Split a value using multiple possible separators
+ * Handles: escaped commas (\,), pipes (|), semicolons (;), regular commas
+ */
+function splitMultiValue(value) {
+    if (!value) return [];
+
+    // First, handle escaped commas by replacing with placeholder
+    const placeholder = '<<COMMA>>';
+    let processed = value.replace(/\\,/g, placeholder);
+
+    // Try different separators
+    let parts;
+    if (processed.includes('|')) {
+        parts = processed.split('|');
+    } else if (processed.includes(';')) {
+        parts = processed.split(';');
+    } else if (processed.includes(',')) {
+        parts = processed.split(',');
+    } else {
+        parts = [processed];
+    }
+
+    // Restore escaped commas and clean up
+    return parts
+        .map(p => p.replace(new RegExp(placeholder, 'g'), ',').trim())
+        .filter(Boolean);
+}
+
+/**
+ * Parse description field - supports CELCAT (English) and Hyperplanning (French) formats
  */
 function parseDescription(rawDescription) {
     if (!rawDescription) return {};
@@ -86,31 +157,40 @@ function parseDescription(rawDescription) {
     const lines = rawDescription.split(/\\n|\n/).map(l => l.trim()).filter(Boolean);
 
     for (const line of lines) {
-        const [key, ...valueParts] = line.split(':');
-        const value = valueParts.join(':').trim();
+        const colonIndex = line.indexOf(':');
+        if (colonIndex === -1) continue;
 
-        switch (key.toLowerCase()) {
-            case 'department':
-                result.department = value;
-                break;
-            case 'event category':
-                result.category = value;
-                break;
-            case 'group':
-                result.group = value;
-                break;
-            case 'module':
-                result.module = value;
-                break;
-            case 'staff':
-                result.staff = value.split(';').map(s => s.trim()).filter(Boolean);
-                break;
-            case 'room':
-                result.room = value;
-                break;
-            case 'notes':
-                result.notes = value;
-                break;
+        const key = line.substring(0, colonIndex).trim();
+        const value = line.substring(colonIndex + 1).trim();
+
+        // Normalize key to lowercase for matching
+        const keyLower = key.toLowerCase();
+
+        // CELCAT English labels
+        if (keyLower === 'department') {
+            result.department = value;
+        } else if (keyLower === 'event category') {
+            result.category = value;
+        } else if (keyLower === 'group') {
+            result.group = value;
+        } else if (keyLower === 'module') {
+            result.module = value;
+        } else if (keyLower === 'staff') {
+            result.staff = splitMultiValue(value);
+        } else if (keyLower === 'room') {
+            result.room = value;
+        } else if (keyLower === 'notes') {
+            result.notes = value;
+        }
+        // Hyperplanning French labels
+        else if (keyLower === 'matière') {
+            result.module = value;
+        } else if (keyLower === 'enseignant' || keyLower === 'enseignants') {
+            result.staff = splitMultiValue(value);
+        } else if (keyLower === 'promotion' || keyLower === 'td' || keyLower === 'promotions') {
+            result.group = value;
+        } else if (keyLower === 'salle' || keyLower === 'salles') {
+            result.room = splitMultiValue(value).join(', ');
         }
     }
 
@@ -118,16 +198,18 @@ function parseDescription(rawDescription) {
 }
 
 /**
- * Extract group number from notes or group field
+ * Extract group number from notes, group field, or categories
  */
-function extractGroupNumber(parsedDesc) {
+function extractGroupNumber(parsedDesc, categories) {
     const groupPatterns = [
         /groupe\s*(\d+)/i,
         /gr\.?\s*(\d+)/i,
+        /gpe\s*(\d+)/i,
         /g(\d+)/i,
+        /S\d+G(\d+)/i,  // ADE format: S1G1, S4G2
     ];
 
-    const searchText = `${parsedDesc.notes || ''} ${parsedDesc.group || ''}`;
+    const searchText = `${parsedDesc.notes || ''} ${parsedDesc.group || ''} ${categories || ''}`;
 
     for (const pattern of groupPatterns) {
         const match = searchText.match(pattern);
@@ -150,19 +232,30 @@ function matchesGroup(event, targetGroup) {
 
 /**
  * Transform raw ICS event to clean format
+ * Supports CELCAT, ADE Campus, and Hyperplanning formats
  */
 function transformEvent(rawEvent) {
     const parsedDesc = parseDescription(rawEvent.description);
     const eventType = parseEventType(rawEvent.summary, rawEvent.description);
-    const subjectName = extractSubjectName(rawEvent.summary || 'Sans titre');
-    const groupNumber = extractGroupNumber(parsedDesc);
+
+    // Extract clean subject name (uses description module if available)
+    const subjectName = extractSubjectName(rawEvent.summary, parsedDesc);
+
+    // Extract module code (A311, ECO-03, etc.)
+    const moduleCode = extractModuleCode(rawEvent.summary);
+
+    // Multi-source group detection: CATEGORIES (ADE) > Description
+    const groupNumber = extractGroupNumber(parsedDesc, rawEvent.categories);
+
+    // Multi-source room detection: Description > LOCATION field
+    const room = parsedDesc.room || rawEvent.location || null;
 
     const start = rawEvent.start instanceof Date ? rawEvent.start : new Date(rawEvent.start);
     const end = rawEvent.end instanceof Date ? rawEvent.end : new Date(rawEvent.end);
 
     return {
         id: rawEvent.uid || `${start.getTime()}-${subjectName}`,
-        title: rawEvent.summary || 'Sans titre',
+        title: subjectName,  // Use clean subject name as title
         subjectName,
         type: eventType.type,
         typeLabel: eventType.label,
@@ -171,12 +264,14 @@ function transformEvent(rawEvent) {
         startTime: start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         endTime: end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         duration: Math.round((end - start) / (1000 * 60)), // in minutes
-        room: parsedDesc.room,
+        room,
         staff: parsedDesc.staff,
-        group: parsedDesc.group,
+        group: parsedDesc.group || rawEvent.categories,
         groupNumber,
         notes: parsedDesc.notes,
         module: parsedDesc.module || subjectName,
+        moduleCode,  // Code du bloc (A311, ECO-03, etc.)
+        categories: rawEvent.categories,
         color: getSubjectColor(subjectName),
         isHoliday: eventType.type === 'HOLIDAY',
     };
@@ -305,6 +400,9 @@ function processField(event, field, value) {
             break;
         case 'UID':
             event.uid = value;
+            break;
+        case 'CATEGORIES':
+            event.categories = value;
             break;
     }
 }
