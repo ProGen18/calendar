@@ -2,9 +2,6 @@
  * ICS Parser & Data Processor
  * Optimized for CELCAT calendar format
  */
-
-const ICS_URL = '/celcat-feed/ical/AQ13FQGL3814385/schedule.ics';
-
 // Color palette for subjects (contrast-safe)
 const COLORS = [
     '#6366f1', // Indigo
