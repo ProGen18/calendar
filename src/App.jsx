@@ -1651,10 +1651,40 @@ export default function App() {
     const goToPrevWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
     const goToNextWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
     const goToToday = () => setSelectedDate(new Date());
-    const goToPrevDay = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() - 1); return n; });
-    const goToNextDay = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 1); return n; });
+
+    // Day navigation with Sunday skip support
+    const goToPrevDay = () => setSelectedDate(d => {
+        const n = new Date(d);
+        n.setDate(n.getDate() - 1);
+        if (settings.hideSunday && n.getDay() === 0) { // If Sunday
+            n.setDate(n.getDate() - 1); // Skip to Saturday
+        }
+        return n;
+    });
+
+    const goToNextDay = () => setSelectedDate(d => {
+        const n = new Date(d);
+        n.setDate(n.getDate() + 1);
+        if (settings.hideSunday && n.getDay() === 0) { // If Sunday
+            n.setDate(n.getDate() + 1); // Skip to Monday
+        }
+        return n;
+    });
+
     const goToPrevMonth = () => setSelectedDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; });
     const goToNextMonth = () => setSelectedDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; });
+
+    // Auto-redirect if on Sunday and hideSunday is enabled
+    useEffect(() => {
+        if (settings.hideSunday && selectedDate.getDay() === 0 && settings.viewMode === VIEW_MODES.DAY) {
+            // Move to Monday
+            setSelectedDate(d => {
+                const n = new Date(d);
+                n.setDate(n.getDate() + 1);
+                return n;
+            });
+        }
+    }, [settings.hideSunday, selectedDate, settings.viewMode]);
 
     const handlePrev = () => {
         if (settings.viewMode === VIEW_MODES.MONTH) goToPrevMonth();
