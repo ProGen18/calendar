@@ -798,6 +798,18 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                                     </label>
                                 </div>
                             </div>
+                            {/* Force Update Button */}
+                            <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border-light)' }}>
+                                <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
+                                    En cas de problème d'affichage ou de version incorrecte :
+                                </p>
+                                <button
+                                    className="btn btn--secondary btn--full btn--small"
+                                    onClick={() => window.location.reload()}
+                                >
+                                    <Icons.Refresh /> Forcer la mise à jour
+                                </button>
+                            </div>
                         </div>
                     </details>
 
@@ -805,7 +817,7 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                     <div className="filter-section" style={{ marginTop: 'var(--space-lg)', borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-md)' }}>
                         <h3 className="filter-section__title"><Icons.Info /> À propos</h3>
                         <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-                            <p><strong>Steph Calendar v1.0</strong></p>
+                            <p><strong>Steph Calendar v1.1.0</strong></p>
                             <p>Développé avec ❤️ par <strong>Stéphane Talab</strong></p>
                             <a
                                 href="https://stephane-talab.fr"
@@ -813,7 +825,7 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                                 rel="noopener noreferrer"
                                 className="btn btn--ghost btn--full"
                                 style={{
-                                    marginTop: 'var(--space-sm)',
+                                    marginTop: 'var(--space-xs)',
                                     textDecoration: 'none',
                                     background: 'var(--bg-tertiary)',
                                     justifyContent: 'center',
