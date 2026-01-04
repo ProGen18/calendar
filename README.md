@@ -1,6 +1,6 @@
 # 📅 Steph Calendar
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/ProGen18/calendar)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/ProGen18/calendar)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/c77ab4bd-4d46-466d-b7f8-4926006abeb5/deploy-status)](https://app.netlify.com/projects/calendar-bysteph/deploys)
 
