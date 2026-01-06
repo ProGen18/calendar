@@ -211,6 +211,24 @@ Distribué sous licence **MIT**. Voir [LICENSE](LICENSE) pour plus d'information
 
 ---
 
+---
+
+## 🔒 Politique de Confidentialité & RGPD
+
+Cette application est conçue dans le respect de la vie privée ("Privacy by Design").
+
+### 1. Collecte des données
+**Aucune donnée personnelle n'est collectée, trackée ou vendue.**
+L'application fonctionne selon le principe du **"Local-First"** :
+- Vos préférences (thème, filtres) sont stockées dans le `localStorage` de votre navigateur.
+- Vos données de calendrier sont mises en cache localement pour permettre le mode hors-ligne.
+
+### 2. Flux de données
+- **Calendriers** : L'application récupère votre emploi du temps via des requêtes directes ou via des proxys CORS publics (AllOrigins) si nécessaire. Ces proxys ne font que relayer la requête sans stocker les données.
+- **Analytics** : Aucun tracker publicitaire ou d'analyse comportementale (Google Analytics, etc.) n'est intégré.
+
+---
+
 ## 👥 Auteurs
 
 **Stéphane Talab** - *Créateur* - [stephane-talab.fr](https://stephane-talab.fr)

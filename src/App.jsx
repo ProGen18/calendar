@@ -834,6 +834,16 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                             >
                                 <Icons.Rocket /> Contactez-moi
                             </a>
+
+                            <details style={{ marginTop: 'var(--space-md)', borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-sm)' }}>
+                                <summary style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', cursor: 'pointer', listStyle: 'none' }}>
+                                    ⚖️ Mentions Légales & RGPD
+                                </summary>
+                                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-sm)', lineHeight: '1.4' }}>
+                                    <p><strong>🔒 Confidentialité :</strong> Cette application fonctionne en mode "Local-First". Vos données (calendrier, préférences) sont stockées uniquement sur votre appareil.</p>
+                                    <p style={{ marginTop: 'var(--space-xs)' }}><strong>🌍 Serveurs :</strong> Aucune donnée personnelle n'est envoyée à un serveur tiers, hormis les requêtes anonymes nécessaires via les proxys (allorigins) pour récupérer votre emploi du temps.</p>
+                                </div>
+                            </details>
                         </div>
                     </div>
                 </div>
