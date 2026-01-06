@@ -835,13 +835,34 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                                 <Icons.Rocket /> Contactez-moi
                             </a>
 
-                            <details style={{ marginTop: 'var(--space-md)', borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-sm)' }}>
-                                <summary style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', cursor: 'pointer', listStyle: 'none' }}>
-                                    ⚖️ Mentions Légales & RGPD
+                            <details style={{ marginTop: 'var(--space-md)' }}>
+                                <summary style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: 'var(--space-sm)',
+                                    backgroundColor: 'var(--bg-tertiary)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    cursor: 'pointer',
+                                    listStyle: 'none',
+                                    fontSize: 'var(--font-size-sm)',
+                                    fontWeight: '500',
+                                    color: 'var(--text-primary)',
+                                    userSelect: 'none'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                                        🛡️ Protection de vos données
+                                    </div>
+                                    <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
                                 </summary>
-                                <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-sm)', lineHeight: '1.4' }}>
-                                    <p><strong>🔒 Confidentialité :</strong> Cette application fonctionne en mode "Local-First". Vos données (calendrier, préférences) sont stockées uniquement sur votre appareil.</p>
-                                    <p style={{ marginTop: 'var(--space-xs)' }}><strong>🌍 Serveurs :</strong> Aucune donnée personnelle n'est envoyée à un serveur tiers, hormis les requêtes anonymes nécessaires via les proxys (allorigins) pour récupérer votre emploi du temps.</p>
+                                <div style={{ padding: 'var(--space-sm)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                                    <p style={{ marginBottom: 'var(--space-xs)' }}>
+                                        Votre vie privée est notre priorité. Cette application est conçue pour stocker vos informations <strong>uniquement sur votre appareil</strong>.
+                                    </p>
+                                    <ul style={{ paddingLeft: 'var(--space-md)', margin: 0 }}>
+                                        <li><strong>Stockage local :</strong> Votre emploi du temps ne quitte jamais ce téléphone.</li>
+                                        <li><strong>Zéro publicité :</strong> Nous ne collectons aucune donnée personnelle et n'utilisons aucun traceur publicitaire.</li>
+                                    </ul>
                                 </div>
                             </details>
                         </div>
