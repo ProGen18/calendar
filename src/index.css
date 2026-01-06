@@ -2653,3 +2653,175 @@ svg {
     padding: 2px;
   }
 }
+
+/* ============================================
+   GDPR Accordion - Enhanced Modern Style
+   ============================================ */
+
+.gdpr-accordion {
+  margin-top: var(--space-md);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(0, 5, 255, 0.05), rgba(99, 102, 241, 0.05));
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.gdpr-accordion:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.15);
+}
+
+.gdpr-accordion__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  color: var(--text-primary);
+  font: inherit;
+  transition: all var(--transition-fast);
+}
+
+.gdpr-accordion__header:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.gdpr-accordion__header:active {
+  transform: scale(0.99);
+}
+
+.gdpr-accordion__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gdpr-accordion__icon {
+  font-size: 1.2rem;
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+}
+
+.gdpr-accordion__chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  transition: all var(--transition-base);
+}
+
+.gdpr-accordion__chevron svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gdpr-accordion.open .gdpr-accordion__chevron {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.gdpr-accordion.open .gdpr-accordion__chevron svg {
+  transform: rotate(180deg);
+}
+
+.gdpr-accordion__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gdpr-accordion.open .gdpr-accordion__body {
+  grid-template-rows: 1fr;
+}
+
+.gdpr-accordion__content {
+  overflow: hidden;
+}
+
+.gdpr-accordion__inner {
+  padding: 0 var(--space-md) var(--space-md);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+}
+
+.gdpr-accordion.open .gdpr-accordion__inner {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.gdpr-accordion__text {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--space-sm);
+}
+
+.gdpr-accordion__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.gdpr-accordion__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  padding: var(--space-sm);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.gdpr-accordion__item:hover {
+  background: var(--bg-hover);
+  transform: translateX(4px);
+}
+
+.gdpr-accordion__item-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.gdpr-accordion__item-content {
+  flex: 1;
+}
+
+.gdpr-accordion__item-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* Light mode adjustments */
+@media (prefers-color-scheme: light) {
+  .gdpr-accordion {
+    background: linear-gradient(135deg, rgba(0, 5, 255, 0.03), rgba(99, 102, 241, 0.03));
+  }
+
+  .gdpr-accordion:hover {
+    box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.2);
+  }
+
+  .gdpr-accordion__item {
+    background: rgba(0, 0, 0, 0.03);
+  }
+}

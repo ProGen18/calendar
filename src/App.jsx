@@ -548,6 +548,54 @@ async function shareToCalendar(event) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// GDPR Accordion Component - Enhanced with smooth animations
+function GdprAccordion() {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className={`gdpr-accordion ${isOpen ? 'open' : ''}`}>
+            <button
+                className="gdpr-accordion__header"
+                onClick={() => setIsOpen(!isOpen)}
+                aria-expanded={isOpen}
+            >
+                <div className="gdpr-accordion__title">
+                    <span className="gdpr-accordion__icon">🛡️</span>
+                    Protection de vos données
+                </div>
+                <span className="gdpr-accordion__chevron">
+                    <Icons.ChevronDown />
+                </span>
+            </button>
+            <div className="gdpr-accordion__body">
+                <div className="gdpr-accordion__content">
+                    <div className="gdpr-accordion__inner">
+                        <p className="gdpr-accordion__text">
+                            Votre vie privée est notre priorité. Cette application est conçue pour stocker vos informations <strong>uniquement sur votre appareil</strong>.
+                        </p>
+                        <ul className="gdpr-accordion__list">
+                            <li className="gdpr-accordion__item">
+                                <span className="gdpr-accordion__item-icon">📱</span>
+                                <div className="gdpr-accordion__item-content">
+                                    <span className="gdpr-accordion__item-title">Stockage local</span>
+                                    Votre emploi du temps ne quitte jamais ce téléphone.
+                                </div>
+                            </li>
+                            <li className="gdpr-accordion__item">
+                                <span className="gdpr-accordion__item-icon">🚫</span>
+                                <div className="gdpr-accordion__item-content">
+                                    <span className="gdpr-accordion__item-title">Zéro publicité</span>
+                                    Nous ne collectons aucune donnée personnelle et n'utilisons aucun traceur.
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Settings Panel Component
 function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }) {
     const [localSettings, setLocalSettings] = useState(settings);
@@ -817,6 +865,7 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                     <div className="filter-section" style={{ marginTop: 'var(--space-lg)', borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-md)' }}>
                         <h3 className="filter-section__title"><Icons.Info /> À propos</h3>
                         <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+
                             <p><strong>Steph Calendar v1.1.0</strong></p>
                             <p>Développé avec ❤️ par <strong>Stéphane Talab</strong></p>
                             <a
@@ -835,36 +884,7 @@ function SettingsPanel({ isOpen, onClose, settings, onSettingsChange, onReload }
                                 <Icons.Rocket /> Contactez-moi
                             </a>
 
-                            <details style={{ marginTop: 'var(--space-md)' }}>
-                                <summary style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: 'var(--space-sm)',
-                                    backgroundColor: 'var(--bg-tertiary)',
-                                    borderRadius: 'var(--radius-sm)',
-                                    cursor: 'pointer',
-                                    listStyle: 'none',
-                                    fontSize: 'var(--font-size-sm)',
-                                    fontWeight: '500',
-                                    color: 'var(--text-primary)',
-                                    userSelect: 'none'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
-                                        🛡️ Protection de vos données
-                                    </div>
-                                    <span style={{ fontSize: '10px', opacity: 0.6 }}>▼</span>
-                                </summary>
-                                <div style={{ padding: 'var(--space-sm)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                                    <p style={{ marginBottom: 'var(--space-xs)' }}>
-                                        Votre vie privée est notre priorité. Cette application est conçue pour stocker vos informations <strong>uniquement sur votre appareil</strong>.
-                                    </p>
-                                    <ul style={{ paddingLeft: 'var(--space-md)', margin: 0 }}>
-                                        <li><strong>Stockage local :</strong> Votre emploi du temps ne quitte jamais ce téléphone.</li>
-                                        <li><strong>Zéro publicité :</strong> Nous ne collectons aucune donnée personnelle et n'utilisons aucun traceur publicitaire.</li>
-                                    </ul>
-                                </div>
-                            </details>
+                            <GdprAccordion />
                         </div>
                     </div>
                 </div>
@@ -1739,16 +1759,21 @@ export default function App() {
         else goToNextWeek();
     };
 
-    // Swipe gestures
+    // Swipe gestures - improved to avoid triggering on vertical scroll
 
-    const touchStart = useRef(null);
-    const touchEnd = useRef(null);
+    const touchStartX = useRef(null);
+    const touchStartY = useRef(null);
+    const touchEndX = useRef(null);
+    const touchEndY = useRef(null);
     const touchZone = useRef(null);
-    const minSwipeDistance = 50;
+    const minSwipeDistance = 80; // Increased from 50 for less sensitivity
+    const maxVerticalRatio = 0.6; // Cancel swipe if vertical movement > 60% of horizontal
 
     const onTouchStart = (e) => {
-        touchEnd.current = null;
-        touchStart.current = e.targetTouches[0].clientX;
+        touchEndX.current = null;
+        touchEndY.current = null;
+        touchStartX.current = e.targetTouches[0].clientX;
+        touchStartY.current = e.targetTouches[0].clientY;
 
         // Identify the zone
         if (e.target.closest('.main')) {
@@ -1761,14 +1786,29 @@ export default function App() {
     };
 
     const onTouchMove = (e) => {
-        touchEnd.current = e.targetTouches[0].clientX;
+        touchEndX.current = e.targetTouches[0].clientX;
+        touchEndY.current = e.targetTouches[0].clientY;
     };
 
     const onTouchEnd = () => {
-        if (!touchStart.current || !touchEnd.current) return;
-        const distance = touchStart.current - touchEnd.current;
-        const isLeftSwipe = distance > minSwipeDistance;
-        const isRightSwipe = distance < -minSwipeDistance;
+        if (!touchStartX.current || !touchEndX.current) return;
+
+        const distanceX = touchStartX.current - touchEndX.current;
+        const distanceY = Math.abs((touchStartY.current || 0) - (touchEndY.current || 0));
+        const absDistanceX = Math.abs(distanceX);
+
+        // Check if this is primarily a vertical scroll - if so, don't trigger swipe
+        if (distanceY > absDistanceX * maxVerticalRatio) {
+            // Vertical movement is too significant, treat as scroll not swipe
+            touchStartX.current = null;
+            touchStartY.current = null;
+            touchEndX.current = null;
+            touchEndY.current = null;
+            return;
+        }
+
+        const isLeftSwipe = distanceX > minSwipeDistance;
+        const isRightSwipe = distanceX < -minSwipeDistance;
 
         if (settings.viewMode === VIEW_MODES.DAY) {
             if (touchZone.current === 'main') {
@@ -1786,8 +1826,10 @@ export default function App() {
         }
 
         // Reset touches to prevent double firing
-        touchStart.current = null;
-        touchEnd.current = null;
+        touchStartX.current = null;
+        touchStartY.current = null;
+        touchEndX.current = null;
+        touchEndY.current = null;
     };
 
     // Handle initial setup
