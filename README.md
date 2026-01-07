@@ -21,6 +21,7 @@
 - [🛠️ Technologies](#️-technologies)
 - [📝 Utilisation](#-utilisation)
 - [🤝 Contribution](#-contribution)
+- [🔒 Politique de Confidentialité & RGPD](#-politique-de-confidentialite-&-rgpd)
 - [📄 Licence](#-licence)
 - [👥 Auteurs](#-auteurs)
 
