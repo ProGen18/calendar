@@ -211,8 +211,6 @@ Distribué sous licence **MIT**. Voir [LICENSE](LICENSE) pour plus d'information
 
 ---
 
----
-
 ## 🔒 Politique de Confidentialité & RGPD
 
 Cette application est conçue dans le respect de la vie privée ("Privacy by Design").
