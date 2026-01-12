@@ -1599,7 +1599,7 @@ function SetupScreen({ onSetup }) {
                     </button>
                 </form>
                 <p className="setup-screen__hint">
-                    <Icons.Mail /> Tu peux trouver ton lien ICS dans les paramètres de CELCAT dans exporter en saisissant ton adreese mail universitaire.
+                    <Icons.Mail /> Tu peux trouver ton lien ICS dans les paramètres de CELCAT dans exporter en saisissant ton adresse mail universitaire.
                 </p>
             </div>
         </div>
