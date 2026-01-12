@@ -21,6 +21,7 @@
 - [🛠️ Technologies](#️-technologies)
 - [📝 Utilisation](#-utilisation)
 - [🤝 Contribution](#-contribution)
+- [🔒 Politique de Confidentialité & RGPD](#-politique-de-confidentialité--rgpd)
 - [📄 Licence](#-licence)
 - [👥 Auteurs](#-auteurs)
 
@@ -208,8 +209,6 @@ Les contributions sont les bienvenues !
 ## 📄 Licence
 
 Distribué sous licence **MIT**. Voir [LICENSE](LICENSE) pour plus d'informations.
-
----
 
 ---
 
