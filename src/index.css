@@ -59,24 +59,40 @@
 
   /* Touch targets */
   --touch-target: 48px;
+
+  /* Component specific */
+  --text-on-indicator: #ffffff;
 }
 
 /* Light mode */
 @media (prefers-color-scheme: light) {
   :root {
-    --bg-primary: #f8fafc;
+    --bg-primary: #f1f5f9;
+    /* Slate 100 - Darker background for contrast */
     --bg-secondary: #ffffff;
-    --bg-tertiary: #f1f5f9;
+    /* White - Pop against bg */
+    --bg-tertiary: #e2e8f0;
+    /* Slate 200 - Visible against white */
     --bg-card: #ffffff;
-    --bg-hover: #f1f5f9;
+    --bg-hover: #e2e8f0;
+    /* Matches tertiary */
+    --bg-glass: rgb(255 255 255 / 85%);
 
     --text-primary: #0f172a;
+    /* Slate 900 */
     --text-secondary: #475569;
+    /* Slate 600 */
     --text-muted: #94a3b8;
+    /* Slate 400 */
 
     --border-color: #e2e8f0;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --border-light: rgba(0, 0, 0, 0.05);
+    /* Softer borders */
+
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+
+    --text-on-indicator: var(--text-primary);
   }
 }
 
@@ -336,7 +352,7 @@ svg {
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
-  color: #fafaff61;
+  color: var(--text-muted);
   font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;
@@ -364,7 +380,7 @@ svg {
 }
 
 .view-mode-btn.active {
-  color: white;
+  color: var(--text-on-indicator);
   background: transparent;
   box-shadow: none;
 }
