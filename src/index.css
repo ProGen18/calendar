@@ -11,6 +11,7 @@
   --bg-card: #1e293b;
   --bg-hover: #334155;
   --bg-glass: rgba(15, 23, 42, 0.85);
+  --bg-glass-nav: rgba(15, 23, 42, 0.45);
 
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
@@ -77,6 +78,7 @@
     --bg-hover: #e2e8f0;
     /* Matches tertiary */
     --bg-glass: rgb(255 255 255 / 85%);
+    --bg-glass-nav: rgb(255 255 255 / 45%);
 
     --text-primary: #0f172a;
     /* Slate 900 */
@@ -158,8 +160,8 @@ svg {
   top: 0;
   z-index: 100;
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(40px) saturate(250%);
+  -webkit-backdrop-filter: blur(40px) saturate(250%);
   border-bottom: 1px solid var(--border-light);
   padding: var(--space-md);
   display: flex;
@@ -404,16 +406,18 @@ svg {
     position: fixed;
     bottom: max(16px, env(safe-area-inset-bottom));
     left: 16px;
-    width: calc(100% - 32px);
-    margin: 0;
-    padding: 10px;
+    right: 16px;
+    max-width: 340px;
+    margin: 0 auto;
+    width: auto;
+    padding: 8px 10px;
     border-radius: 40px;
     border: 1px solid var(--border-light);
-    background: var(--bg-glass);
+    background: var(--bg-glass-nav);
     backdrop-filter: blur(40px) saturate(250%);
     -webkit-backdrop-filter: blur(40px) saturate(250%);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    z-index: 1000;
+    z-index: 90;
     gap: 4px;
   }
 
@@ -909,7 +913,7 @@ svg {
   gap: var(--space-sm);
   padding: 0 var(--space-md);
   min-height: var(--touch-target);
-  border: none;
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   font-family: inherit;
   font-size: var(--font-size-sm);
@@ -920,6 +924,8 @@ svg {
   touch-action: manipulation;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
 }
 
 .btn::before {
@@ -946,30 +952,33 @@ svg {
 }
 
 .btn:active {
-  transform: scale(1.05);
+  transform: scale(0.88);
   transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .btn--primary {
-  background: var(--accent-primary);
+  background: rgba(0, 5, 255, 0.75);
   color: white;
-  box-shadow: 0 0 0 0 rgba(0, 5, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 5, 255, 0.25);
 }
 
 .btn--primary:hover {
-  background: var(--accent-primary-hover);
-  box-shadow: var(--shadow-colored);
+  background: rgba(0, 5, 255, 0.85);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 8px 16px rgba(0, 5, 255, 0.35);
   transform: translateY(-1px);
 }
 
 .btn--primary:active {
-  transform: translateY(0) scale(1.05);
+  transform: translateY(0) scale(0.88);
   transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .btn--secondary {
-  background: var(--bg-tertiary);
+  background: var(--bg-glass);
   color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .btn--secondary:hover {
@@ -979,11 +988,17 @@ svg {
 .btn--ghost {
   background: transparent;
   color: var(--text-secondary);
+  border-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .btn--ghost:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-glass);
   color: var(--text-primary);
+  border-color: var(--border-light);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
 }
 
 .btn--icon {
@@ -2441,30 +2456,18 @@ svg {
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background: var(--bg-secondary);
+  background: var(--bg-glass);
+  backdrop-filter: blur(40px) saturate(250%);
+  -webkit-backdrop-filter: blur(40px) saturate(250%);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   padding: 8px;
   min-width: 220px;
   z-index: 100;
   transform-origin: top right;
   animation: menuSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
-}
-
-@supports (backdrop-filter: blur(12px)) {
-  .action-menu {
-    background: rgba(255, 255, 255, 0.85);
-    /* Light mode fallback checked by var later */
-    backdrop-filter: blur(12px);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .action-menu {
-      background: rgba(30, 30, 35, 0.85);
-    }
-  }
 }
 
 @keyframes menuSlideIn {
@@ -2510,6 +2513,12 @@ svg {
 .action-menu__item:hover {
   background: var(--bg-hover);
   transform: translateX(4px);
+}
+
+.action-menu__item:active {
+  transform: scale(0.92);
+  background: var(--bg-hover);
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .action-menu__item svg {
