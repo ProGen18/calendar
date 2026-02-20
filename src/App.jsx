@@ -1625,6 +1625,13 @@ function SetupScreen({ onSetup }) {
     );
 }
 
+// Micro-interaction Haptics Helper
+export const triggerHaptic = (duration = 10) => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(duration); } catch (e) { }
+    }
+};
+
 // Main App
 export default function App() {
     const [settings, setSettings] = useState(loadSettings);
@@ -1633,11 +1640,18 @@ export default function App() {
     const [error, setError] = useState(null);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedEvent, setSelectedEvent] = useState(null);
+
+    const handleEventClick = useCallback((event) => {
+        triggerHaptic(10);
+        setSelectedEvent(event);
+    }, []);
+
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
     const [isFromCache, setIsFromCache] = useState(false);
     const [cacheDate, setCacheDate] = useState(null);
+    const [dateAnimation, setDateAnimation] = useState('');
 
     // Save settings on change
     useEffect(() => {
@@ -1729,32 +1743,41 @@ export default function App() {
     const types = useMemo(() => getUniqueTypes(filterOptionsEvents), [filterOptionsEvents]);
     const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
 
-    // Navigation
-    const goToPrevWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
-    const goToNextWeek = () => setSelectedDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
-    const goToToday = () => setSelectedDate(new Date());
+    // Navigation with animation tracking
+    const changeDate = (updater, direction) => {
+        triggerHaptic(10);
+        setDateAnimation('');
+        setTimeout(() => {
+            setDateAnimation(direction);
+            setSelectedDate(updater);
+        }, 10);
+    };
+
+    const goToPrevWeek = () => changeDate(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; }, 'slide-right');
+    const goToNextWeek = () => changeDate(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; }, 'slide-left');
+    const goToToday = () => changeDate(new Date(), 'pop-in');
 
     // Day navigation with Sunday skip support
-    const goToPrevDay = () => setSelectedDate(d => {
+    const goToPrevDay = () => changeDate(d => {
         const n = new Date(d);
         n.setDate(n.getDate() - 1);
         if (settings.hideSunday && n.getDay() === 0) { // If Sunday
             n.setDate(n.getDate() - 1); // Skip to Saturday
         }
         return n;
-    });
+    }, 'slide-right');
 
-    const goToNextDay = () => setSelectedDate(d => {
+    const goToNextDay = () => changeDate(d => {
         const n = new Date(d);
         n.setDate(n.getDate() + 1);
         if (settings.hideSunday && n.getDay() === 0) { // If Sunday
             n.setDate(n.getDate() + 1); // Skip to Monday
         }
         return n;
-    });
+    }, 'slide-left');
 
-    const goToPrevMonth = () => setSelectedDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; });
-    const goToNextMonth = () => setSelectedDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; });
+    const goToPrevMonth = () => changeDate(d => { const n = new Date(d); n.setMonth(n.getMonth() - 1); return n; }, 'slide-right');
+    const goToNextMonth = () => changeDate(d => { const n = new Date(d); n.setMonth(n.getMonth() + 1); return n; }, 'slide-left');
 
     // Auto-redirect if on Sunday and hideSunday is enabled
     useEffect(() => {
@@ -1904,13 +1927,13 @@ export default function App() {
                 </div>
             </header>
 
-            <ViewModeSelector viewMode={settings.viewMode} onChange={(m) => setSettings(s => ({ ...s, viewMode: m }))} />
+            <ViewModeSelector viewMode={settings.viewMode} onChange={(m) => { triggerHaptic(10); setSettings(s => ({ ...s, viewMode: m })); }} />
 
             {settings.viewMode === VIEW_MODES.DAY && (
                 <div style={{ padding: '0 var(--space-md)' }}>
                     <div className="date-nav">
                         <button className="date-nav__btn" onClick={handlePrev}><Icons.ChevronLeft /></button>
-                        <div className="date-nav__current">
+                        <div key={selectedDate.getTime()} className={`date-nav__current ${dateAnimation}`}>
                             <div className="date-nav__day">{selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
                             {!isToday(selectedDate) && <div className="date-nav__today" onClick={goToToday}>Aujourd'hui</div>}
                         </div>
@@ -1926,7 +1949,7 @@ export default function App() {
                 <div style={{ padding: '0 var(--space-md)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <div className="date-nav">
                         <button className="date-nav__btn" onClick={handlePrev}><Icons.ChevronLeft /></button>
-                        <div className="date-nav__current">
+                        <div key={selectedDate.getTime()} className={`date-nav__current ${dateAnimation}`}>
                             <div className="date-nav__day">{selectedDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
                             {!isToday(selectedDate) && <div className="date-nav__today" onClick={goToToday}>Aujourd'hui</div>}
                         </div>
@@ -1962,7 +1985,7 @@ export default function App() {
                             <ToolsView
                                 events={filteredEvents}
                                 weekDates={weekDates}
-                                onEventClick={setSelectedEvent}
+                                onEventClick={handleEventClick}
                             />
                         ) : settings.viewMode === VIEW_MODES.RESTO_U ? (
                             <RestoUView />
@@ -1973,13 +1996,13 @@ export default function App() {
                                 events={filteredEvents}
                                 hiddenEvents={hiddenEvents}
                                 selectedDate={selectedDate}
-                                onEventClick={setSelectedEvent}
+                                onEventClick={handleEventClick}
                             />
                         ) : (
                             <AgendaView
                                 events={filteredEvents}
                                 hiddenEvents={hiddenEvents}
-                                onEventClick={setSelectedEvent}
+                                onEventClick={handleEventClick}
                             />
                         )}
                     </div>
