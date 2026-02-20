@@ -1932,15 +1932,17 @@ export default function App() {
                         </div>
                         <button className="date-nav__btn" onClick={handleNext}><Icons.ChevronRight /></button>
                     </div>
-                    <MonthView
-                        events={filteredEvents}
-                        selectedDate={selectedDate}
-                        onSelectDate={(date) => {
-                            setSelectedDate(date);
-                            setSettings(s => ({ ...s, viewMode: VIEW_MODES.DAY }));
-                        }}
-                        onEventClick={setSelectedEvent}
-                    />
+                    <div key="month-view-grid" className="page-enter-animation" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                        <MonthView
+                            events={filteredEvents}
+                            selectedDate={selectedDate}
+                            onSelectDate={(date) => {
+                                setSelectedDate(date);
+                                setSettings(s => ({ ...s, viewMode: VIEW_MODES.DAY }));
+                            }}
+                            onEventClick={setSelectedEvent}
+                        />
+                    </div>
                 </div>
             )}
 
@@ -1954,29 +1956,33 @@ export default function App() {
                         <p>{error}</p>
                         <button className="btn btn--primary" onClick={loadCalendar}>Réessayer</button>
                     </div>
-                ) : settings.viewMode === VIEW_MODES.TOOLS ? (
-                    <ToolsView
-                        events={filteredEvents}
-                        weekDates={weekDates}
-                        onEventClick={setSelectedEvent}
-                    />
-                ) : settings.viewMode === VIEW_MODES.RESTO_U ? (
-                    <RestoUView />
-                ) : settings.viewMode === VIEW_MODES.MONTH ? (
-                    null
-                ) : settings.viewMode === VIEW_MODES.DAY ? (
-                    <DayView
-                        events={filteredEvents}
-                        hiddenEvents={hiddenEvents}
-                        selectedDate={selectedDate}
-                        onEventClick={setSelectedEvent}
-                    />
                 ) : (
-                    <AgendaView
-                        events={filteredEvents}
-                        hiddenEvents={hiddenEvents}
-                        onEventClick={setSelectedEvent}
-                    />
+                    <div key={settings.viewMode} className="page-enter-animation" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        {settings.viewMode === VIEW_MODES.TOOLS ? (
+                            <ToolsView
+                                events={filteredEvents}
+                                weekDates={weekDates}
+                                onEventClick={setSelectedEvent}
+                            />
+                        ) : settings.viewMode === VIEW_MODES.RESTO_U ? (
+                            <RestoUView />
+                        ) : settings.viewMode === VIEW_MODES.MONTH ? (
+                            null
+                        ) : settings.viewMode === VIEW_MODES.DAY ? (
+                            <DayView
+                                events={filteredEvents}
+                                hiddenEvents={hiddenEvents}
+                                selectedDate={selectedDate}
+                                onEventClick={setSelectedEvent}
+                            />
+                        ) : (
+                            <AgendaView
+                                events={filteredEvents}
+                                hiddenEvents={hiddenEvents}
+                                onEventClick={setSelectedEvent}
+                            />
+                        )}
+                    </div>
                 )}
             </main>
 

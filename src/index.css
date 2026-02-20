@@ -12,6 +12,7 @@
   --bg-hover: #334155;
   --bg-glass: rgba(15, 23, 42, 0.85);
   --bg-glass-nav: rgba(15, 23, 42, 0.45);
+  --indicator-bg: rgba(255, 255, 255, 0.1);
 
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
@@ -57,6 +58,7 @@
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Touch targets */
   --touch-target: 48px;
@@ -79,6 +81,7 @@
     /* Matches tertiary */
     --bg-glass: rgb(255 255 255 / 85%);
     --bg-glass-nav: rgb(255 255 255 / 45%);
+    --indicator-bg: rgba(0, 0, 0, 0.05);
 
     --text-primary: #0f172a;
     /* Slate 900 */
@@ -143,8 +146,26 @@ svg {
   flex-direction: column;
 }
 
+/* Animations */
+@keyframes slideUpFromNav {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-enter-animation {
+  animation: slideUpFromNav var(--transition-spring) forwards;
+  will-change: transform, opacity;
+}
+
 /* ============================================
-   Layout Components
+   Components
    ============================================ */
 
 .app {
@@ -252,7 +273,9 @@ svg {
 /* Navigation Tabs */
 .nav-tabs {
   display: flex;
-  background: var(--bg-secondary);
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
   border-bottom: 1px solid var(--border-color);
   padding: 0 var(--space-md);
   overflow-x: auto;
@@ -281,6 +304,12 @@ svg {
 
 .nav-tab:hover {
   color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.nav-tab:active {
+  transform: scale(0.92);
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .nav-tab.active {
@@ -404,32 +433,33 @@ svg {
 
   .view-mode-selector {
     position: fixed;
-    bottom: max(16px, env(safe-area-inset-bottom));
+    bottom: max(24px, env(safe-area-inset-bottom));
     left: 16px;
     right: 16px;
-    max-width: 340px;
+    max-width: 320px;
     margin: 0 auto;
     width: auto;
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-radius: 40px;
     border: 1px solid var(--border-light);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
     background: var(--bg-glass-nav);
     backdrop-filter: blur(40px) saturate(250%);
     -webkit-backdrop-filter: blur(40px) saturate(250%);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     z-index: 90;
     gap: 4px;
   }
 
   /* Liquid background indicator */
   .view-mode-indicator {
-    top: 10px;
-    bottom: 10px;
-    background: var(--bg-card);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+    top: 6px;
+    bottom: 6px;
+    background: var(--indicator-bg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.1);
     border-radius: 30px;
-    width: calc((100% - 20px) / var(--tab-count));
-    left: calc(10px + ((100% - 20px) / var(--tab-count)) * var(--active-index));
+    width: calc((100% - 16px) / var(--tab-count));
+    left: calc(8px + ((100% - 16px) / var(--tab-count)) * var(--active-index));
     /* Extreme spring physics for fluid, liquid-like sliding */
     transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
@@ -437,30 +467,41 @@ svg {
   .view-mode-btn {
     padding: 12px 4px;
     flex-direction: column;
-    gap: 6px;
-    overflow: visible;
+    gap: 0;
+    overflow: hidden;
+    position: relative;
+    justify-content: center;
   }
 
   .view-mode-btn__label {
     font-size: 10.5px;
     font-weight: 700;
     letter-spacing: 0.2px;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s;
+    position: absolute;
+    bottom: 6px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .view-mode-btn svg {
     width: 24px;
     height: 24px;
+    /* Center the icon perfectly when label is hidden */
+    transform: translateY(0);
     transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
   }
 
+  /* When Active: Icon springs up, Label springs up and fades in */
   .view-mode-btn.active svg {
-    transform: translateY(-3px) scale(1.18);
-    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
+    transform: translateY(-8px) scale(1.1);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+    color: var(--accent-primary);
   }
 
   .view-mode-btn.active .view-mode-btn__label {
-    transform: translateY(-2px);
+    transform: translateY(0);
+    opacity: 1;
     color: var(--accent-primary);
   }
 
@@ -681,7 +722,9 @@ svg {
 .filter-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 200;
   opacity: 0;
   visibility: hidden;
@@ -707,6 +750,11 @@ svg {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--bg-glass);
+  backdrop-filter: blur(40px) saturate(250%);
+  -webkit-backdrop-filter: blur(40px) saturate(250%);
+  border-left: 1px solid var(--border-light);
+  box-shadow: var(--shadow-lg);
 }
 
 .filter-panel.open {
@@ -815,7 +863,7 @@ svg {
 }
 
 .filter-chip:active {
-  transform: scale(1.08);
+  transform: scale(0.92);
   transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1608,6 +1656,25 @@ svg {
 .event-card {
   cursor: pointer;
   position: relative;
+  background: var(--bg-glass-nav);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all var(--transition-base);
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: var(--bg-glass);
+}
+
+.event-card:active {
+  transform: scale(0.96);
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .event-card__tap-hint {
@@ -1702,11 +1769,14 @@ svg {
   padding: var(--space-sm) var(--space-md);
   font-family: inherit;
   font-size: var(--font-size-base);
-  background: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  background: var(--bg-glass-nav);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   transition: all var(--transition-fast);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .settings-input:focus {
@@ -2584,10 +2654,13 @@ svg {
   padding-right: 40px;
   font-size: var(--font-size-base);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  background: var(--bg-glass-nav);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--text-primary);
   transition: all var(--transition-fast);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tools-search__input:focus {
@@ -2964,12 +3037,25 @@ svg {
 }
 
 .resto-card {
-  background: var(--bg-secondary);
+  background: var(--bg-glass-nav);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition: all var(--transition-base);
+}
+
+.resto-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: var(--bg-glass);
+}
+
+.resto-card:active {
+  transform: scale(0.96);
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .resto-card--pinned {
