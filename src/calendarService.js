@@ -289,29 +289,44 @@ export async function fetchCalendarEvents(icsUrl) {
     // Convert webcal:// to https://
     const normalizedUrl = icsUrl.replace(/^webcal:\/\//i, 'https://');
 
-    // Try different methods to fetch the ICS
-    const fetchMethods = [
-        // Method 1: Direct fetch (if CORS is allowed)
+    // Is it running locally?
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    const fetchMethods = [];
+
+    // Method 1: Local Vite proxy (only if running locally and URL is u-picardie)
+    if (isLocalhost && normalizedUrl.includes('extra.u-picardie.fr')) {
+        fetchMethods.push(async () => {
+            const proxyUrl = normalizedUrl.replace('https://extra.u-picardie.fr', '/api');
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.text();
+        });
+    }
+
+    // Add standard fetch methods
+    fetchMethods.push(
+        // Method 2: Direct fetch (if CORS is allowed or deployed on same origin)
         async () => {
             const response = await fetch(normalizedUrl);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.text();
         },
-        // Method 2: CORS proxy (allorigins)
+        // Method 3: CORS proxy (allorigins)
         async () => {
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(normalizedUrl)}`;
             const response = await fetch(proxyUrl);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.text();
         },
-        // Method 3: Alternative CORS proxy (corsproxy.io)
+        // Method 4: Alternative CORS proxy (corsproxy.io)
         async () => {
             const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(normalizedUrl)}`;
             const response = await fetch(proxyUrl);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.text();
-        },
-    ];
+        }
+    );
 
     for (const method of fetchMethods) {
         try {

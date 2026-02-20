@@ -394,6 +394,83 @@ svg {
   transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* iOS 26 Liquid Glass Bottom Navigation (Mobile) */
+@media (max-width: 600px) {
+  .main {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom));
+  }
+
+  .view-mode-selector {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 16px;
+    width: calc(100% - 32px);
+    margin: 0;
+    padding: 10px;
+    border-radius: 40px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-glass);
+    backdrop-filter: blur(40px) saturate(250%);
+    -webkit-backdrop-filter: blur(40px) saturate(250%);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+    gap: 4px;
+  }
+
+  /* Liquid background indicator */
+  .view-mode-indicator {
+    top: 10px;
+    bottom: 10px;
+    background: var(--bg-card);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 30px;
+    width: calc((100% - 20px) / var(--tab-count));
+    left: calc(10px + ((100% - 20px) / var(--tab-count)) * var(--active-index));
+    /* Extreme spring physics for fluid, liquid-like sliding */
+    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .view-mode-btn {
+    padding: 12px 4px;
+    flex-direction: column;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .view-mode-btn__label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s;
+  }
+
+  .view-mode-btn svg {
+    width: 24px;
+    height: 24px;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
+  }
+
+  .view-mode-btn.active svg {
+    transform: translateY(-3px) scale(1.18);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
+  }
+
+  .view-mode-btn.active .view-mode-btn__label {
+    transform: translateY(-2px);
+    color: var(--accent-primary);
+  }
+
+  /* Extremely fluid and bouncy "liquid" touch effect */
+  .view-mode-btn:active {
+    transform: scale(0.85);
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .view-mode-btn:active svg {
+    transform: scale(0.9) translateY(4px);
+  }
+}
+
 .date-nav {
   display: flex;
   align-items: center;
@@ -2840,4 +2917,188 @@ svg {
   .gdpr-accordion__item {
     background: rgba(0, 0, 0, 0.03);
   }
+}
+
+/* ============================================
+   Resto U View
+   ============================================ */
+.resto-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.resto-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.resto-section__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.resto-section__title svg {
+  color: var(--accent-primary);
+}
+
+.resto-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.resto-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+  transition: all var(--transition-base);
+}
+
+.resto-card--pinned {
+  border-left: 4px solid var(--accent-warning);
+}
+
+.resto-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  gap: var(--space-md);
+}
+
+.resto-card__header:hover .resto-card__title {
+  color: var(--accent-primary);
+}
+
+.resto-card__title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color var(--transition-fast);
+}
+
+.resto-card__zone {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.resto-card__zone svg {
+  width: 14px;
+  height: 14px;
+}
+
+.resto-card__actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.resto-card__content {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px dashed var(--border-light);
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.resto-empty {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--space-md);
+}
+
+.resto-menus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.resto-day {
+  margin-bottom: var(--space-sm);
+}
+
+.resto-day:last-child {
+  margin-bottom: 0;
+}
+
+.resto-day__date {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: capitalize;
+  margin-bottom: var(--space-sm);
+  border-bottom: 2px solid var(--border-light);
+  padding-bottom: 4px;
+  display: inline-block;
+}
+
+.resto-day__meals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-md);
+}
+
+.resto-meal {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.resto-meal__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent-primary);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.resto-meal__category {
+  margin-bottom: var(--space-sm);
+}
+
+.resto-meal__category:last-child {
+  margin-bottom: 0;
+}
+
+.resto-meal__category-name {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.resto-meal__food-list {
+  list-style: none;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.resto-meal__food-list li {
+  margin-bottom: 4px;
+  position: relative;
+  padding-left: 12px;
+}
+
+.resto-meal__food-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--accent-primary);
 }

@@ -8,6 +8,11 @@ import {
     cacheEvents,
     loadCachedEvents,
 } from './calendarService';
+// Temporarily comment out missing widgets
+// import WeatherWidget from './components/WeatherWidget';
+// import HolidayCountdown from './components/HolidayCountdown';
+// import CrousWidget from './components/CrousWidget';
+import RestoUView from './components/RestoUView';
 
 // View modes
 const VIEW_MODES = {
@@ -15,6 +20,7 @@ const VIEW_MODES = {
     AGENDA: 'agenda',
     MONTH: 'month',
     TOOLS: 'tools',
+    RESTO_U: 'resto_u',
 };
 
 // Default settings
@@ -1442,13 +1448,14 @@ function ViewModeSelector({ viewMode, onChange }) {
         { id: VIEW_MODES.DAY, label: 'Jour', icon: <Icons.Calendar /> },
         { id: VIEW_MODES.AGENDA, label: 'Agenda', icon: <Icons.List /> },
         { id: VIEW_MODES.MONTH, label: 'Mois', icon: <Icons.Calendar /> },
+        { id: VIEW_MODES.RESTO_U, label: 'Resto U', icon: <Icons.MapPin /> },
     ];
 
     const activeIndex = modes.findIndex(m => m.id === viewMode);
 
     return (
         <div
-            className="view-mode-selector view-mode-selector--three"
+            className="view-mode-selector view-mode-selector--four"
             style={{ '--active-index': activeIndex }}
         >
             <div className="view-mode-indicator" style={{ opacity: activeIndex === -1 ? 0 : 1 }} />
@@ -1526,6 +1533,18 @@ function ToolsView({ events, weekDates, onEventClick }) {
             <div className="tools-section">
                 <h3 className="tools-section__title"><Icons.BarChart /> Statistiques</h3>
                 <WeeklyStatsWidget events={events} weekDates={weekDates} />
+            </div>
+
+            {/* Amiens Widgets Section */}
+            <div className="tools-section">
+                <h3 className="tools-section__title">📍 Vie Étudiante (Amiens)</h3>
+                <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                    {/* <WeatherWidget />
+                    <HolidayCountdown /> */}
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                    {/* <CrousWidget /> */}
+                </div>
             </div>
         </div>
     );
@@ -1941,6 +1960,8 @@ export default function App() {
                         weekDates={weekDates}
                         onEventClick={setSelectedEvent}
                     />
+                ) : settings.viewMode === VIEW_MODES.RESTO_U ? (
+                    <RestoUView />
                 ) : settings.viewMode === VIEW_MODES.MONTH ? (
                     null
                 ) : settings.viewMode === VIEW_MODES.DAY ? (
